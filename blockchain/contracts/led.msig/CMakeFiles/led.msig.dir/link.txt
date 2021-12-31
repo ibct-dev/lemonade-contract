@@ -1,0 +1,1 @@
+//usr/local/bin/eosio-ld CMakeFiles/led.msig.dir/src/led.msig.cpp.obj -o led.msig.wasm 

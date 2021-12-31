@@ -1,0 +1,757 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.1",
+    "types": [
+        {
+            "new_type_name": "id_type",
+            "type": "uint64"
+        }
+    ],
+    "structs": [
+        {
+            "name": "account",
+            "base": "",
+            "fields": [
+                {
+                    "name": "balance",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "allowance",
+            "base": "",
+            "fields": [
+                {
+                    "name": "balance",
+                    "type": "asset"
+                },
+                {
+                    "name": "spender",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "approve",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "spender",
+                    "type": "name"
+                },
+                {
+                    "name": "quantity",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "approvenft",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "spender",
+                    "type": "name"
+                },
+                {
+                    "name": "sym",
+                    "type": "string"
+                },
+                {
+                    "name": "token_id",
+                    "type": "id_type"
+                }
+            ]
+        },
+        {
+            "name": "auctiontoken",
+            "base": "",
+            "fields": [
+                {
+                    "name": "auctioneer",
+                    "type": "name"
+                },
+                {
+                    "name": "sym",
+                    "type": "string"
+                },
+                {
+                    "name": "token_id",
+                    "type": "id_type"
+                },
+                {
+                    "name": "min_price",
+                    "type": "asset"
+                },
+                {
+                    "name": "sec",
+                    "type": "uint32"
+                }
+            ]
+        },
+        {
+            "name": "bidresult",
+            "base": "",
+            "fields": [
+                {
+                    "name": "bid_key_currency",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "bidtoken",
+            "base": "",
+            "fields": [
+                {
+                    "name": "bidder",
+                    "type": "name"
+                },
+                {
+                    "name": "sym",
+                    "type": "string"
+                },
+                {
+                    "name": "token_id",
+                    "type": "id_type"
+                },
+                {
+                    "name": "bid",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "burn",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "quantity",
+                    "type": "asset"
+                },
+                {
+                    "name": "memo",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "burnfrom",
+            "base": "",
+            "fields": [
+                {
+                    "name": "burner",
+                    "type": "name"
+                },
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "quantity",
+                    "type": "asset"
+                },
+                {
+                    "name": "memo",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "burnnft",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "quantity",
+                    "type": "asset"
+                },
+                {
+                    "name": "token_ids",
+                    "type": "uint64[]"
+                },
+                {
+                    "name": "memo",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "burnnftfrom",
+            "base": "",
+            "fields": [
+                {
+                    "name": "burner",
+                    "type": "name"
+                },
+                {
+                    "name": "sym",
+                    "type": "string"
+                },
+                {
+                    "name": "token_id",
+                    "type": "id_type"
+                },
+                {
+                    "name": "memo",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "changeissuer",
+            "base": "",
+            "fields": [
+                {
+                    "name": "to",
+                    "type": "name"
+                },
+                {
+                    "name": "target",
+                    "type": "symbol"
+                }
+            ]
+        },
+        {
+            "name": "claimtoken",
+            "base": "",
+            "fields": [
+                {
+                    "name": "requester",
+                    "type": "name"
+                },
+                {
+                    "name": "sym",
+                    "type": "string"
+                },
+                {
+                    "name": "token_id",
+                    "type": "id_type"
+                }
+            ]
+        },
+        {
+            "name": "close",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "symbol",
+                    "type": "symbol"
+                }
+            ]
+        },
+        {
+            "name": "create",
+            "base": "",
+            "fields": [
+                {
+                    "name": "issuer",
+                    "type": "name"
+                },
+                {
+                    "name": "maximum_supply",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "createnft",
+            "base": "",
+            "fields": [
+                {
+                    "name": "issuer",
+                    "type": "name"
+                },
+                {
+                    "name": "sym",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "currency_stats",
+            "base": "",
+            "fields": [
+                {
+                    "name": "supply",
+                    "type": "asset"
+                },
+                {
+                    "name": "max_supply",
+                    "type": "asset"
+                },
+                {
+                    "name": "issuer",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "decallowance",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "quantity",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "freeze",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "frozen",
+            "base": "",
+            "fields": [
+                {
+                    "name": "freezer",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "incallowance",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "quantity",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "issue",
+            "base": "",
+            "fields": [
+                {
+                    "name": "to",
+                    "type": "name"
+                },
+                {
+                    "name": "quantity",
+                    "type": "asset"
+                },
+                {
+                    "name": "memo",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "issuenft",
+            "base": "",
+            "fields": [
+                {
+                    "name": "to",
+                    "type": "name"
+                },
+                {
+                    "name": "quantity",
+                    "type": "asset"
+                },
+                {
+                    "name": "token_infos",
+                    "type": "pair_uint64_name[]"
+                },
+                {
+                    "name": "memo",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "nft",
+            "base": "",
+            "fields": [
+                {
+                    "name": "token_id",
+                    "type": "id_type"
+                },
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "tokenName",
+                    "type": "name"
+                },
+                {
+                    "name": "spender",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "nft_bid",
+            "base": "",
+            "fields": [
+                {
+                    "name": "token_id",
+                    "type": "id_type"
+                },
+                {
+                    "name": "high_bidder",
+                    "type": "name"
+                },
+                {
+                    "name": "high_bid",
+                    "type": "asset"
+                },
+                {
+                    "name": "deadline",
+                    "type": "time_point_sec"
+                }
+            ]
+        },
+        {
+            "name": "open",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "symbol",
+                    "type": "symbol"
+                },
+                {
+                    "name": "ram_payer",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "pair_uint64_name",
+            "base": "",
+            "fields": [
+                {
+                    "name": "first",
+                    "type": "uint64"
+                },
+                {
+                    "name": "second",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "send",
+            "base": "",
+            "fields": [
+                {
+                    "name": "from",
+                    "type": "name"
+                },
+                {
+                    "name": "to",
+                    "type": "name"
+                },
+                {
+                    "name": "sym",
+                    "type": "string"
+                },
+                {
+                    "name": "token_id",
+                    "type": "id_type"
+                },
+                {
+                    "name": "memo",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "sendfrom",
+            "base": "",
+            "fields": [
+                {
+                    "name": "spender",
+                    "type": "name"
+                },
+                {
+                    "name": "to",
+                    "type": "name"
+                },
+                {
+                    "name": "sym",
+                    "type": "string"
+                },
+                {
+                    "name": "token_id",
+                    "type": "id_type"
+                },
+                {
+                    "name": "memo",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "transfer",
+            "base": "",
+            "fields": [
+                {
+                    "name": "from",
+                    "type": "name"
+                },
+                {
+                    "name": "to",
+                    "type": "name"
+                },
+                {
+                    "name": "quantity",
+                    "type": "asset"
+                },
+                {
+                    "name": "memo",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "transferfrom",
+            "base": "",
+            "fields": [
+                {
+                    "name": "spender",
+                    "type": "name"
+                },
+                {
+                    "name": "from",
+                    "type": "name"
+                },
+                {
+                    "name": "to",
+                    "type": "name"
+                },
+                {
+                    "name": "quantity",
+                    "type": "asset"
+                },
+                {
+                    "name": "memo",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "unfreeze",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account",
+                    "type": "name"
+                }
+            ]
+        }
+    ],
+    "actions": [
+        {
+            "name": "approve",
+            "type": "approve",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "approvenft",
+            "type": "approvenft",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "auctiontoken",
+            "type": "auctiontoken",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "bidresult",
+            "type": "bidresult",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "bidtoken",
+            "type": "bidtoken",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "burn",
+            "type": "burn",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "burnfrom",
+            "type": "burnfrom",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "burnnft",
+            "type": "burnnft",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "burnnftfrom",
+            "type": "burnnftfrom",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "changeissuer",
+            "type": "changeissuer",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "claimtoken",
+            "type": "claimtoken",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "close",
+            "type": "close",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "create",
+            "type": "create",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "createnft",
+            "type": "createnft",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "decallowance",
+            "type": "decallowance",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "freeze",
+            "type": "freeze",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "incallowance",
+            "type": "incallowance",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "issue",
+            "type": "issue",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "issuenft",
+            "type": "issuenft",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "open",
+            "type": "open",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "send",
+            "type": "send",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "sendfrom",
+            "type": "sendfrom",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "transfer",
+            "type": "transfer",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "transferfrom",
+            "type": "transferfrom",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "unfreeze",
+            "type": "unfreeze",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [
+        {
+            "name": "accounts",
+            "type": "account",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "allowances",
+            "type": "allowance",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "frozens",
+            "type": "frozen",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "nft",
+            "type": "nft",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "nftbids",
+            "type": "nft_bid",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "stat",
+            "type": "currency_stats",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        }
+    ],
+    "ricardian_clauses": [],
+    "variants": []
+}

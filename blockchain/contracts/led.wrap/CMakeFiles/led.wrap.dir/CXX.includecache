@@ -1,0 +1,20 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/Users/ibct/workspace/develop/led.public.contracts/contracts/led.wrap/include/led.wrap/led.wrap.hpp
+eosio/eosio.hpp
+-
+eosio/ignore.hpp
+-
+eosio/transaction.hpp
+-
+
+/Users/ibct/workspace/develop/led.public.contracts/contracts/led.wrap/src/led.wrap.cpp
+led.wrap/led.wrap.hpp
+-
+

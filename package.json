@@ -1,0 +1,31 @@
+{
+    "name": "realcollection-contract",
+    "version": "1.0.1",
+    "main": "index.js",
+    "license": "MIT",
+    "scripts": {
+        "init": "scripts/init.sh",
+        "pretest": "scripts/compile.sh && scripts/run_blockchain.sh",
+        "test": "mocha -r ts-node/register tests/**/*.test.ts",
+        "build": "scripts/compile.sh",
+        "deploy": "scripts/deploy.sh",
+        "release": "standard-version"
+    },
+    "dependencies": {
+        "@ibct-dev/sclest": "^0.0.5"
+    },
+    "devDependencies": {
+        "@babel/preset-env": "^7.12.13",
+        "@babel/preset-typescript": "^7.12.13",
+        "@types/chai": "^4.2.14",
+        "@types/jest": "^26.0.20",
+        "@types/mocha": "^8.2.0",
+        "chai": "^4.3.0",
+        "jest": "^26.6.3",
+        "mocha": "^8.2.1",
+        "prettier": "^2.2.1",
+        "standard-version": "^9.3.2",
+        "ts-node": "^9.1.1",
+        "typescript": "^4.1.3"
+    }
+}

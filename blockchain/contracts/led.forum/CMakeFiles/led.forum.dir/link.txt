@@ -1,0 +1,1 @@
+//usr/local/bin/eosio-ld CMakeFiles/led.forum.dir/src/led.forum.cpp.obj -o led.forum.wasm 

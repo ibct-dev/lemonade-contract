@@ -1,0 +1,26 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/Users/ibct/workspace/develop/led.public.contracts/contracts/led.bios/include/led.bios/led.bios.hpp
+eosio/action.hpp
+-
+eosio/crypto.hpp
+-
+eosio/eosio.hpp
+-
+eosio/fixed_bytes.hpp
+-
+eosio/privileged.hpp
+-
+eosio/producer_schedule.hpp
+-
+
+/Users/ibct/workspace/develop/led.public.contracts/contracts/led.bios/src/led.bios.cpp
+led.bios/led.bios.hpp
+-
+

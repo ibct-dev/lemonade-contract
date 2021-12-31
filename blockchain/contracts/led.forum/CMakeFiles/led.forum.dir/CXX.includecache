@@ -1,0 +1,24 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/Users/ibct/workspace/develop/led.public.contracts/contracts/led.forum/include/led.forum/led.forum.hpp
+algorithm
+-
+string
+-
+eosio/eosio.hpp
+-
+eosio/system.hpp
+-
+eosio/time.hpp
+-
+
+/Users/ibct/workspace/develop/led.public.contracts/contracts/led.forum/src/led.forum.cpp
+led.forum/led.forum.hpp
+/Users/ibct/workspace/develop/led.public.contracts/contracts/led.forum/src/led.forum/led.forum.hpp
+

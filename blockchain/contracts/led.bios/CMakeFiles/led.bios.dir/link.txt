@@ -1,0 +1,1 @@
+//usr/local/bin/eosio-ld CMakeFiles/led.bios.dir/src/led.bios.cpp.obj -o led.bios.wasm 

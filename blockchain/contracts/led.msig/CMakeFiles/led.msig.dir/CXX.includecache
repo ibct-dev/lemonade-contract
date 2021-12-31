@@ -1,0 +1,28 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/Users/ibct/workspace/develop/led.public.contracts/contracts/led.msig/include/led.msig/led.msig.hpp
+eosio/binary_extension.hpp
+-
+eosio/eosio.hpp
+-
+eosio/ignore.hpp
+-
+eosio/transaction.hpp
+-
+
+/Users/ibct/workspace/develop/led.public.contracts/contracts/led.msig/src/led.msig.cpp
+led.msig/led.msig.hpp
+-
+eosio/action.hpp
+-
+eosio/permission.hpp
+-
+eosio/crypto.hpp
+-
+

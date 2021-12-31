@@ -1,0 +1,1 @@
+//usr/local/bin/eosio-ld CMakeFiles/led.wrap.dir/src/led.wrap.cpp.obj -o led.wrap.wasm 
