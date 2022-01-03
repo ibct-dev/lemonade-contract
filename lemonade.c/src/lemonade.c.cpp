@@ -56,7 +56,7 @@ void lemonade::rmproduct(const name &product_name) {
 }
 
 void lemonade::stake(const name &owner, const asset &quantity,
-                     const name &product_name) {
+                     const name &product_name, const <optional>name &betting) {
   require_auth(owner);
 
   check(quantity.is_valid(), "invalid quantity");
@@ -88,12 +88,17 @@ void lemonade::stake(const name &owner, const asset &quantity,
   if (existing_product->duration != 0) {
     ended_at = now() + existing_product->duration;
   }
+  name status = ""_n;
+  if(betting.has_value()){
+      status = betting;
+  }
 
   accounts_table.emplace(owner, [&](account &a) {
     a.id = accounts_table.available_primary_key();
     a.balance = quantity;
     a.product_id = existing_product->id;
     a.current_yield = existing_product->minimum_yield;
+    a.betting = status;
     a.started_at = started_at;
     a.ended_at = ended_at;
   });
@@ -163,7 +168,7 @@ void lemonade::transfer_event(const name &from, const name &to,
 
   vector<string> event = memoParser(memo);
 
-  stake(from, quantity, name(event[0]));
+  stake(from, quantity, name(event[0]), name(event[1]));
 }
 
 vector<string> lemonade::memoParser(const string &memo) {

@@ -39,6 +39,7 @@ private:
     asset balance;
     id_type product_id;
     double current_yield;
+    name betting;
     uint32_t started_at; // (uint32_t)
                          // (eosio::current_time_point().sec_since_epoch());
     uint32_t
