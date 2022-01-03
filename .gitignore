@@ -46,4 +46,6 @@ Temporary Items
 # and uncomment the following lines
 # .pnp.*
 
+lemonade.c/build
+
 # End of https://www.toptal.com/developers/gitignore/api/macos,yarn
