@@ -1,8 +1,8 @@
-# Realcollection LEDGIS smart contract
+# Lemonade LEDGIS smart contract
 
 ## Outline
 
-This contract for `Realcollection LEDGIS smart contract` It contains normal market releated actions
+This contract for `Lemonade LEDGIS smart contract` It contains normal market releated actions
 
 ## Prerequisite
 
@@ -21,29 +21,13 @@ This contract for `Realcollection LEDGIS smart contract` It contains normal mark
 ### Clone
 
 ```bash
-$ git clone https://github.com/ibct-dev/rlcservice --recursive
+$ git clone https://github.com/ibct-dev/lemonade-contract --recursive
 or
-$ git clone https://github.com/ibct-dev/rlcservice
+$ git clone https://github.com/ibct-dev/lemonade-contract
 $ cd contract-boilerplate
 $ git submodule update --init --recursive
 ```
 
 ## Actions
 
-1. auction
-    - auction 등록 액션
-2. rmauction
-    - auction 삭제 액션
-3. sale
-    - sale 등록 액션
-4. rmsale
-    - sale 삭제 액션
-5. approve
-    - sale 시 highest_offer을 승인하는 액션
-6. claimtoken
-    - auction 에서 highest_bidder에게 판매하는 액션
-7. clearresidue
-    - 시간 지난 거래 일괄삭제
-
-
-
+WIP
