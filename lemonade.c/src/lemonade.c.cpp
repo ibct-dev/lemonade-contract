@@ -56,7 +56,7 @@ void lemonade::rmproduct(const name &product_name) {
 }
 
 void lemonade::stake(const name &owner, const asset &quantity,
-                     const name &product_name, const <optional>name &betting) {
+                     const name &product_name, const optional<name> &betting) {
   require_auth(owner);
 
   check(quantity.is_valid(), "invalid quantity");
@@ -89,9 +89,13 @@ void lemonade::stake(const name &owner, const asset &quantity,
     ended_at = now() + existing_product->duration;
   }
   name status = ""_n;
-  if(betting.has_value()){
-      status = betting;
+  if (betting.has_value()) {
+    status = betting.value();
   }
+
+  action(permission_level{owner, "active"_n}, "led.token"_n, "transfer"_n,
+         make_tuple(owner, get_self(), quantity, string("stake")))
+      .send();
 
   accounts_table.emplace(owner, [&](account &a) {
     a.id = accounts_table.available_primary_key();
@@ -161,32 +165,32 @@ uint32_t lemonade::now() {
   return (uint32_t)(eosio::current_time_point().sec_since_epoch());
 }
 
-void lemonade::transfer_event(const name &from, const name &to,
-                              const asset &quantity, const string &memo) {
-  if (to != get_self())
-    return;
+// void lemonade::transfer_event(const name &from, const name &to,
+//                               const asset &quantity, const string &memo) {
+//   if (to != get_self())
+//     return;
 
-  vector<string> event = memoParser(memo);
+//   vector<string> event = memoParser(memo);
 
-  stake(from, quantity, name(event[0]), name(event[1]));
-}
+//   stake(from, quantity, name(event[0]), name(event[1]));
+// }
 
-vector<string> lemonade::memoParser(const string &memo) {
-  vector<string> result;
+// vector<string> lemonade::memoParser(const string &memo) {
+//   vector<string> result;
 
-  size_t prev = memo.find(':');
-  result.push_back(memo.substr(0, prev));
-  size_t pos = prev;
-  while (true) {
-    pos = memo.find(':', pos + 1);
-    if (pos == std::string::npos) {
-      result.push_back(memo.substr(prev + 1));
-      break;
-    } else {
-      result.push_back(memo.substr(prev + 1, (pos - (prev + 1))));
-    }
-    prev = pos;
-  }
+//   size_t prev = memo.find(':');
+//   result.push_back(memo.substr(0, prev));
+//   size_t pos = prev;
+//   while (true) {
+//     pos = memo.find(':', pos + 1);
+//     if (pos == std::string::npos) {
+//       result.push_back(memo.substr(prev + 1));
+//       break;
+//     } else {
+//       result.push_back(memo.substr(prev + 1, (pos - (prev + 1))));
+//     }
+//     prev = pos;
+//   }
 
-  return result;
-}
+//   return result;
+// }
