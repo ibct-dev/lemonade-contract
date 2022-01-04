@@ -62,7 +62,9 @@ private:
       accounts;
 
   uint32_t now();
-  // vector<string> memoParser(const string &memo);
+  vector<string> memoParser(const string &memo);
+  void stake(const name &owner, const asset &quantity, const name &product_name,
+             const optional<name> &betting);
 
   template <typename T> void cleanTable(name self, uint64_t scope = 0) {
     uint64_t s = scope ? scope : self.value;
@@ -86,24 +88,19 @@ public:
 
   [[eosio::action]] void rmproduct(const name &product_name);
 
-  [[eosio::action]] void stake(const name &owner, const asset &quantity,
-                               const name &product_name,
-                               const optional<name> &betting);
-
   [[eosio::action]] void unstake(const name &owner, const name &product_name);
 
   [[eosio::action]] void changeyield(
       const name &owner, const name &product_name, const double &yield);
 
-  // [[eosio::on_notify("*::transfer")]] void transfer_event(
-  //     const name &from, const name &to, const asset &quantity,
-  //     const string &memo);
+  [[eosio::on_notify("*::transfer")]] void transfer_event(
+      const name &from, const name &to, const asset &quantity,
+      const string &memo);
 
   using addproduct_action =
       eosio::action_wrapper<"addproduct"_n, &lemonade::addproduct>;
   using rmproduct_action =
       eosio::action_wrapper<"rmproduct"_n, &lemonade::rmproduct>;
-  using stake_action = eosio::action_wrapper<"stake"_n, &lemonade::stake>;
   using unstake_action = eosio::action_wrapper<"unstake"_n, &lemonade::unstake>;
   using changeyield_action =
       eosio::action_wrapper<"changeyield"_n, &lemonade::changeyield>;

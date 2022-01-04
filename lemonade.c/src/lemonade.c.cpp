@@ -67,7 +67,7 @@ void lemonade::stake(const name &owner, const asset &quantity,
   auto existing_product = productIdx.find(product_name.value);
   check(existing_product != productIdx.end(), "product does not exist");
 
-  accounts accounts_table(owner, owner.value);
+  accounts accounts_table(get_self(), owner.value);
   auto accountIdx = accounts_table.get_index<eosio::name("byproductid")>();
   auto existing_account = accountIdx.find(existing_product->id);
   check(existing_account == accountIdx.end(), "already has same product");
@@ -88,16 +88,12 @@ void lemonade::stake(const name &owner, const asset &quantity,
   if (existing_product->duration != 0) {
     ended_at = now() + existing_product->duration;
   }
-  name status = ""_n;
+  name status = "none"_n;
   if (betting.has_value()) {
     status = betting.value();
   }
 
-  action(permission_level{owner, "active"_n}, "led.token"_n, "transfer"_n,
-         make_tuple(owner, get_self(), quantity, string("stake")))
-      .send();
-
-  accounts_table.emplace(owner, [&](account &a) {
+  accounts_table.emplace(get_self(), [&](account &a) {
     a.id = accounts_table.available_primary_key();
     a.balance = quantity;
     a.product_id = existing_product->id;
@@ -119,7 +115,7 @@ void lemonade::unstake(const name &owner, const name &product_name) {
   auto existing_product = productIdx.find(product_name.value);
   check(existing_product != productIdx.end(), "product does not exist");
 
-  accounts accounts_table(owner, owner.value);
+  accounts accounts_table(get_self(), owner.value);
   auto accountIdx = accounts_table.get_index<eosio::name("byproductid")>();
   auto existing_account = accountIdx.find(existing_product->id);
   check(existing_account != accountIdx.end(), "owner does not has product");
@@ -152,7 +148,7 @@ void lemonade::changeyield(const name &owner, const name &product_name,
   auto existing_product = productIdx.find(product_name.value);
   check(existing_product != productIdx.end(), "product does not exist");
 
-  accounts accounts_table(owner, owner.value);
+  accounts accounts_table(get_self(), owner.value);
   auto accountIdx = accounts_table.get_index<eosio::name("byproductid")>();
   auto existing_account = accountIdx.find(existing_product->id);
   check(existing_account != accountIdx.end(), "owner does not has product");
@@ -165,32 +161,32 @@ uint32_t lemonade::now() {
   return (uint32_t)(eosio::current_time_point().sec_since_epoch());
 }
 
-// void lemonade::transfer_event(const name &from, const name &to,
-//                               const asset &quantity, const string &memo) {
-//   if (to != get_self())
-//     return;
+void lemonade::transfer_event(const name &from, const name &to,
+                              const asset &quantity, const string &memo) {
+  if (to != get_self())
+    return;
 
-//   vector<string> event = memoParser(memo);
+  vector<string> event = memoParser(memo);
 
-//   stake(from, quantity, name(event[0]), name(event[1]));
-// }
+  stake(from, quantity, name(event[0]), name(event[1]));
+}
 
-// vector<string> lemonade::memoParser(const string &memo) {
-//   vector<string> result;
+vector<string> lemonade::memoParser(const string &memo) {
+  vector<string> result;
 
-//   size_t prev = memo.find(':');
-//   result.push_back(memo.substr(0, prev));
-//   size_t pos = prev;
-//   while (true) {
-//     pos = memo.find(':', pos + 1);
-//     if (pos == std::string::npos) {
-//       result.push_back(memo.substr(prev + 1));
-//       break;
-//     } else {
-//       result.push_back(memo.substr(prev + 1, (pos - (prev + 1))));
-//     }
-//     prev = pos;
-//   }
+  size_t prev = memo.find('/');
+  result.push_back(memo.substr(0, prev));
+  size_t pos = prev;
+  while (true) {
+    pos = memo.find('/', pos + 1);
+    if (pos == std::string::npos) {
+      result.push_back(memo.substr(prev + 1));
+      break;
+    } else {
+      result.push_back(memo.substr(prev + 1, (pos - (prev + 1))));
+    }
+    prev = pos;
+  }
 
-//   return result;
-// }
+  return result;
+}
