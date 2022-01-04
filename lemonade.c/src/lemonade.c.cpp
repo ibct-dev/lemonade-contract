@@ -140,7 +140,7 @@ void lemonade::unstake(const name &owner, const name &product_name) {
 }
 
 void lemonade::changeyield(const name &owner, const name &product_name,
-                           const double &yield) {
+                           const double &yield, const string &memo) {
   require_auth(get_self());
 
   products products_table(get_self(), get_self().value);
@@ -152,6 +152,10 @@ void lemonade::changeyield(const name &owner, const name &product_name,
   auto accountIdx = accounts_table.get_index<eosio::name("byproductid")>();
   auto existing_account = accountIdx.find(existing_product->id);
   check(existing_account != accountIdx.end(), "owner does not has product");
+
+  check(yield >= existing_product->minimum_yield &&
+            yield <= existing_product->maximum_yield,
+        "exceed product yield range");
 
   accountIdx.modify(existing_account, same_payer,
                     [&](account &a) { a.current_yield = yield; });

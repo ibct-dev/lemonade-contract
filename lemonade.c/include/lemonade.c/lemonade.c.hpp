@@ -91,7 +91,7 @@ public:
   [[eosio::action]] void unstake(const name &owner, const name &product_name);
 
   [[eosio::action]] void changeyield(
-      const name &owner, const name &product_name, const double &yield);
+      const name &owner, const name &product_name, const double &yield, const string &memo);
 
   [[eosio::on_notify("*::transfer")]] void transfer_event(
       const name &from, const name &to, const asset &quantity,
