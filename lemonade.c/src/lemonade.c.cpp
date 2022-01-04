@@ -167,8 +167,9 @@ void lemonade::transfer_event(const name &from, const name &to,
     return;
 
   vector<string> event = memoParser(memo);
-
-  stake(from, quantity, name(event[0]), name(event[1]));
+  if (event[0] == "staking") {
+    stake(from, quantity, name(event[1]), name(event[2]));
+  }
 }
 
 vector<string> lemonade::memoParser(const string &memo) {

@@ -251,7 +251,7 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                             from: user,
                             to: manager,
                             quantity: `${stake}.0000 LED`,
-                            memo: `normal`
+                            memo: `staking/normal`
                         },
                         [
                             {
