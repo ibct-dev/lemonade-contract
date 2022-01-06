@@ -124,9 +124,7 @@ void lemonade::unstake(const name &owner, const name &product_name) {
     check(existing_account->ended_at <= now(), "account end time is not over");
   }
 
-  asset toUnstake = asset(existing_account->balance.amount *
-                              log(existing_account->current_yield),
-                          existing_product->amount_per_account.symbol);
+  asset toUnstake = existing_account->balance;
 
   action(permission_level{get_self(), "active"_n}, "led.token"_n, "transfer"_n,
          make_tuple(get_self(), owner, toUnstake, string("unstake")))
@@ -161,6 +159,154 @@ void lemonade::changeyield(const name &owner, const name &product_name,
                     [&](account &a) { a.current_yield = yield; });
 }
 
+void lemonade::createbet(const uint32_t &started_at,
+                         const uint32_t &betting_ended_at,
+                         const uint32_t &ended_at) {
+  require_auth(get_self());
+  bettings bettings_table(get_self(), get_self().value);
+
+  asset zero;
+  zero.amount = 0;
+  zero.symbol = symbol("LED", 4);
+
+  auto current = now();
+  check(started_at >= 0 && betting_ended_at >= 0 && ended_at >= 0,
+        "timestamp must be a positive integer");
+  check(started_at <= betting_ended_at && betting_ended_at <= ended_at,
+        "timestamp is not correct");
+  check(current <= started_at, "start time must greater than now");
+
+  bettings_table.emplace(get_self(), [&](betting &a) {
+    a.id = bettings_table.available_primary_key();
+    a.short_betting_amount = zero;
+    a.long_betting_amount = zero;
+    a.short_dividend = 0;
+    a.long_dividend = 0;
+    a.started_at = started_at;
+    a.betting_ended_at = betting_ended_at;
+    a.ended_at = ended_at;
+    a.is_live = Status::NOT_STARTED;
+  });
+}
+
+void lemonade::rmbet(const uint64_t bet_id) {
+  require_auth(get_self());
+
+  bettings bettings_table(get_self(), get_self().value);
+  auto existing_betting = bettings_table.find(bet_id);
+  check(existing_betting != bettings_table.end(), "game does not exist");
+
+  check(existing_betting->short_betters.size() == 0 &&
+            existing_betting->long_betters.size() == 0,
+        "betters are exists");
+
+  bettings_table.erase(existing_betting);
+}
+
+void lemonade::bet(const name &owner, const asset &quantity,
+                   const uint64_t &bet_id, const string &position) {
+  require_auth(owner);
+
+  bettings bettings_table(get_self(), get_self().value);
+  auto existing_betting = bettings_table.find(bet_id);
+  check(existing_betting != bettings_table.end(), "game does not exist");
+
+  check(position == "long" || position == "short",
+        "you must bet long or short position");
+
+  asset new_short_amount = existing_betting->short_betting_amount;
+  asset new_long_amount = existing_betting->long_betting_amount;
+
+  asset zero;
+  zero.amount = 0;
+  zero.symbol = symbol("LED", 4);
+
+  double short_dividend = 0;
+  double long_dividend = 0;
+
+  check(!existing_betting->long_better_exists(owner) &&
+            !existing_betting->short_better_exists(owner),
+        "you already betted");
+
+  // check(existing_betting->live() == Status::IS_LIVE, "game is not lived");
+  check(existing_betting->betting_ended_at >= now(), "betting time is over");
+
+  const double betting_ratio = 0.95;
+
+  if (position == "long") {
+    new_long_amount += quantity;
+    if (existing_betting->short_betting_amount.amount != 0) {
+      short_dividend = ((new_short_amount.amount + new_long_amount.amount) /
+                        new_short_amount.amount * betting_ratio);
+    }
+    long_dividend = ((new_short_amount.amount + new_long_amount.amount) /
+                     new_long_amount.amount * betting_ratio);
+
+    bettings_table.modify(existing_betting, same_payer, [&](betting &a) {
+      a.short_betting_amount = new_short_amount;
+      a.long_betting_amount = new_long_amount;
+      a.long_betters.push_back({owner, quantity});
+      a.short_dividend = short_dividend;
+      a.long_dividend = long_dividend;
+    });
+  }
+  if (position == "short") {
+    new_short_amount += quantity;
+    short_dividend = ((new_short_amount.amount + new_long_amount.amount) /
+                      new_short_amount.amount * betting_ratio);
+    if (existing_betting->long_betting_amount.amount != 0) {
+      long_dividend = ((new_short_amount.amount + new_long_amount.amount) /
+                       new_long_amount.amount * betting_ratio);
+    }
+    bettings_table.modify(existing_betting, same_payer, [&](betting &a) {
+      a.short_betting_amount = new_short_amount;
+      a.long_betting_amount = new_long_amount;
+      a.short_betters.push_back({owner, quantity});
+      a.short_dividend = short_dividend;
+      a.long_dividend = long_dividend;
+    });
+  }
+}
+
+void lemonade::claimbet(const uint64_t &bet_id, const string &win_position) {
+  require_auth(get_self());
+
+  bettings bettings_table(get_self(), get_self().value);
+  auto existing_betting = bettings_table.find(bet_id);
+  check(existing_betting != bettings_table.end(), "game does not exist");
+
+  check(win_position == "long" || win_position == "short",
+        "must choose long or short position");
+
+  // check(existing_betting->live() == Status::IS_LIVE, "game is not lived");
+  check(existing_betting->ended_at <= now(), "betting is not over");
+
+  vector<pair<name, asset>> winners;
+  double dividend;
+
+  if (win_position == "long") {
+    winners = existing_betting->long_betters;
+    dividend = existing_betting->long_dividend;
+  }
+  if (win_position == "short") {
+    winners = existing_betting->short_betters;
+    dividend = existing_betting->short_dividend;
+  }
+
+  for (auto k : winners) {
+    const asset price =
+        asset(k.second.amount * dividend, k.second.symbol);
+    action(
+        permission_level{get_self(), "active"_n}, "led.token"_n, "transfer"_n,
+        make_tuple(get_self(), k.first, price,
+                   string("winner of ") + to_string(bet_id) + string("game!")))
+        .send();
+  }
+
+  bettings_table.modify(existing_betting, same_payer,
+                        [&](betting &a) { a.is_live = Status::FINISHED; });
+}
+
 uint32_t lemonade::now() {
   return (uint32_t)(eosio::current_time_point().sec_since_epoch());
 }
@@ -173,6 +319,10 @@ void lemonade::transfer_event(const name &from, const name &to,
   vector<string> event = memoParser(memo);
   if (event[0] == "staking") {
     stake(from, quantity, name(event[1]), name(event[2]));
+  }
+  if (event[0] == "bet") {
+    uint64_t bet_id = stoull(event[1]);
+    bet(from, quantity, bet_id, event[2]);
   }
 }
 

@@ -5,6 +5,11 @@ function seconds_since_epoch(d: number) {
     return Math.floor(d / 1000);
 }
 
+beforeEach(async () => {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    console.log("----------------------");
+});
+
 describe("lemonade.c 컨트랙트 테스트", () => {
     const debug = 1;
     const isLocal = true;
@@ -58,6 +63,53 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                     ledTokenTester = await bc.getAccount("led.token");
                     ledTester = await bc.getAccount("led");
                     await bc.getAccount(user);
+                }
+            });
+            it("led.code 권한 생성", async () => {
+                try {
+                    const authData = {
+                        threshold: 1,
+                        keys: [
+                            {
+                                key: 'EOS8EReqzz88PbvNa8afvTkAhAdfbwgfRwfy4AMwS3K2thvFaMD9S',
+                                weight: 1
+                            }
+                        ],
+                        accounts: [
+                            {
+                                permission:
+                                {
+                                    actor: manager,
+                                    permission: "led.code"
+                                },
+                                weight: 1
+                            }
+                        ],
+                        waits: [],
+                    }
+                    const actionResult = await ledTester.actions.updateauth(
+                        {
+                            account: manager,
+                            permission: "active",
+                            parent: "owner",
+                            auth: authData,
+                        },
+                        [
+                            {
+                                actor: manager,
+                                permission: "owner",
+                            },
+                        ]
+                    );
+                    expect(actionResult).to.have.all.keys([
+                        "transaction_id",
+                        "processed",
+                    ]);
+                } catch (error) {
+                    console.log(
+                        `ERROR ${errorCount}: cannot transfer: ${error}`
+                    );
+                    errorCount += 1;
                 }
             });
             it(`${user} 유저가 사용할 토큰을 지급함`, async () => {
@@ -283,6 +335,155 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                 const balance = await bc.rpc.get_currency_balance('led.token', user, 'LED');
                 console.log(balance);
                 expect(balance[0]).to.equal(`${initialize-stake}.0000 LED`);
+            });
+        });
+
+        describe("Unstaking: unstake()", async () => {
+            it(`${user} 유저가 unstake 함`, async () => {
+                try {
+                    const actionResult = await contractTester.actions.unstake(
+                        {
+                            owner: user,
+                            product_name: "normal",
+                        },
+                        [
+                            {
+                                actor: user,
+                                permission: "active",
+                            },
+                        ]
+                    );
+                    expect(actionResult).to.have.all.keys([
+                        "transaction_id",
+                        "processed",
+                    ]);
+                } catch (error) {
+                    console.log(
+                        `ERROR ${errorCount}: cannot unstaking: ${error}`
+                    );
+                    errorCount += 1;
+                }
+            });
+            it(`account 테이블에 삭제 확인`, async () => {
+                const tableResult = await contractTester.tables.accounts({
+                    scope: user,
+                });
+                if (debug) console.log(`Accounts\n${JSON.stringify(tableResult)}`);
+                const onlyCreated = tableResult[0];
+                expect(onlyCreated).to.equal(undefined);
+            });
+            it(`${user} 계정 잔액 확인`, async () => {
+                const balance = await bc.rpc.get_currency_balance('led.token', user, 'LED');
+                console.log(balance);
+                expect(balance[0]).to.equal(`${initialize}.0000 LED`);
+            });
+        });
+
+        describe("Createbet: createbet()", async () => {
+            it(`${manager} 유저가 베팅 게임을 생성함`, async () => {
+                try {
+                    const actionResult = await contractTester.actions.createbet(
+                        {
+                            started_at: seconds_since_epoch(Date.now()) + 1,
+                            betting_ended_at: seconds_since_epoch(Date.now()) + 3,
+                            ended_at: seconds_since_epoch(Date.now()) + 3, 
+                        },
+                        [
+                            {
+                                actor: manager,
+                                permission: "active",
+                            },
+                        ]
+                    );
+                    expect(actionResult).to.have.all.keys([
+                        "transaction_id",
+                        "processed",
+                    ]);
+                } catch (error) {
+                    console.log(
+                        `ERROR ${errorCount}: cannot add game: ${error}`
+                    );
+                    errorCount += 1;
+                }
+            });
+            it(`betting 테이블에 생성 확인`, async () => {
+                const tableResult = await contractTester.tables.bettings();
+                if (debug) console.log(`Bettings\n${JSON.stringify(tableResult)}`);
+                const onlyCreated = tableResult[0];
+                expect(onlyCreated).to.deep.include({ is_live: 0 });
+            });
+        });
+
+        describe("Betting: bet()", async () => {
+            it(`${user} 유저가 betting을 함`, async () => {
+                try {
+                    const actionResult = await ledTokenTester.actions.transfer(
+                        {
+                            from: user,
+                            to: manager,
+                            quantity: `${stake}.0000 LED`,
+                            memo: `bet/0/long`
+                        },
+                        [
+                            {
+                                actor: user,
+                                permission: "active",
+                            },
+                        ]
+                    );
+                    expect(actionResult).to.have.all.keys([
+                        "transaction_id",
+                        "processed",
+                    ]);
+                } catch (error) {
+                    console.log(
+                        `ERROR ${errorCount}: cannot transfer: ${error}`
+                    );
+                    errorCount += 1;
+                }
+            });
+            it(`betting 테이블에 변경 확인`, async () => {
+                const tableResult = await contractTester.tables.bettings();
+                if (debug) console.log(`Bettings\n${JSON.stringify(tableResult)}`);
+                const onlyCreated = tableResult[0];
+            });
+        });
+
+        describe("Claimbet: claimbet()", async () => {
+            it(`${manager} 유저가 claimbet 함`, async () => {
+                try {
+                    const actionResult = await contractTester.actions.claimbet(
+                        {
+                            bet_id: 0,
+                            win_position: "long",
+                        },
+                        [
+                            {
+                                actor: manager,
+                                permission: "active",
+                            },
+                        ]
+                    );
+                    expect(actionResult).to.have.all.keys([
+                        "transaction_id",
+                        "processed",
+                    ]);
+                } catch (error) {
+                    console.log(
+                        `ERROR ${errorCount}: cannot claimbet: ${error}`
+                    );
+                    errorCount += 1;
+                }
+            });
+            it(`betting 테이블에 변경 확인`, async () => {
+                const tableResult = await contractTester.tables.bettings();
+                if (debug) console.log(`Bettings\n${JSON.stringify(tableResult)}`);
+                const onlyCreated = tableResult[0];
+                expect(onlyCreated).to.deep.include({ is_live: 2 });
+            });
+            it(`${user} 계정 잔액 확인`, async () => {
+                const balance = await bc.rpc.get_currency_balance('led.token', user, 'LED');
+                console.log(balance);
             });
         });
     }
