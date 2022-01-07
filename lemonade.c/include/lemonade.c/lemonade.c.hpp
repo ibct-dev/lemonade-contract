@@ -19,11 +19,7 @@ typedef uint64_t id_type;
 
 class [[eosio::contract("lemonade.c")]] lemonade : public contract {
 private:
-  const enum Status {
-    NOT_STARTED,
-    IS_LIVE,
-    FINISHED
-  };
+  const enum Status { NOT_STARTED, IS_LIVE, BETTING_FINISH, FINISHED };
 
   struct [[eosio::table]] product {
     id_type id;
@@ -57,6 +53,7 @@ private:
 
   struct [[eosio::table]] betting {
     id_type id;
+    double base_price;
     vector<pair<name, asset>> short_betters;
     vector<pair<name, asset>> long_betters;
     asset short_betting_amount;
@@ -66,9 +63,10 @@ private:
     uint32_t started_at;
     uint32_t betting_ended_at;
     uint32_t ended_at;
-    uint8_t is_live;
+    uint8_t status;
 
     uint64_t primary_key() const { return id; }
+    double get_base_price() const { return base_price; }
     double get_short_dividend() const { return short_dividend; }
     double get_long_dividend() const { return long_dividend; }
     bool short_better_exists(const name owner) const {
@@ -83,7 +81,7 @@ private:
                        return p.first == owner;
                      }) != long_betters.end();
     }
-    uint8_t live() const { return is_live; }
+    uint8_t get_status() const { return status; }
   };
 
   typedef eosio::multi_index<
@@ -105,7 +103,7 @@ private:
   void stake(const name &owner, const asset &quantity, const name &product_name,
              const optional<name> &betting);
   void bet(const name &owner, const asset &quantity, const uint64_t &bet_id,
-               const string &position);
+           const string &position);
 
   template <typename T> void cleanTable(name self, uint64_t scope = 0) {
     uint64_t s = scope ? scope : self.value;
@@ -139,6 +137,9 @@ public:
                                    const uint32_t &betting_ended_at,
                                    const uint32_t &ended_at);
 
+  [[eosio::action]] void setbet(const uint64_t bet_id, const uint8_t &status,
+                                const optional<double> &base_price);
+
   [[eosio::action]] void rmbet(const uint64_t bet_id);
 
   [[eosio::action]] void claimbet(const uint64_t &bet_id,
@@ -158,6 +159,7 @@ public:
   using createbet_action =
       eosio::action_wrapper<"createbet"_n, &lemonade::createbet>;
   using rmbet_action = eosio::action_wrapper<"rmbet"_n, &lemonade::rmbet>;
+  using setbet_action = eosio::action_wrapper<"setbet"_n, &lemonade::setbet>;
   using claimbet_action =
       eosio::action_wrapper<"claimbet"_n, &lemonade::claimbet>;
 };

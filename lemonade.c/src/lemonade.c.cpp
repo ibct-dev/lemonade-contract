@@ -23,6 +23,8 @@ void lemonade::addproduct(const name &product_name, const double &minimum_yield,
   uint32_t dur = 0;
 
   if (maximum_amount_limit.has_value()) {
+    check(amount_per_account.amount <= maximum_amount_limit->amount,
+          "account limit must be smaller than total limit");
     check(amount_per_account.symbol == maximum_amount_limit->symbol,
           "must be same amount_per_account and maximum_amount_limit symbol");
     limit = maximum_amount_limit.value();
@@ -51,6 +53,9 @@ void lemonade::rmproduct(const name &product_name) {
   auto productIdx = products_table.get_index<eosio::name("byname")>();
   auto existing_product =
       productIdx.require_find(product_name.value, "product does not exists");
+
+  check(existing_product->current_amount.amount == 0,
+        "this product already sold for other users");
 
   productIdx.erase(existing_product);
 }
@@ -185,7 +190,8 @@ void lemonade::createbet(const uint32_t &started_at,
     a.started_at = started_at;
     a.betting_ended_at = betting_ended_at;
     a.ended_at = ended_at;
-    a.is_live = Status::NOT_STARTED;
+    a.base_price = 0;
+    a.status = Status::NOT_STARTED;
   });
 }
 
@@ -201,6 +207,36 @@ void lemonade::rmbet(const uint64_t bet_id) {
         "betters are exists");
 
   bettings_table.erase(existing_betting);
+}
+
+void lemonade::setbet(const uint64_t bet_id, const uint8_t &status,
+                      const optional<double> &base_price) {
+  require_auth(get_self());
+
+  bettings bettings_table(get_self(), get_self().value);
+  auto existing_betting = bettings_table.find(bet_id);
+  check(existing_betting != bettings_table.end(), "game does not exist");
+  check(status != Status::NOT_STARTED && status != Status::FINISHED,
+        "you give wrong status");
+
+  if (status == Status::IS_LIVE) {
+    check(existing_betting->get_status() == Status::NOT_STARTED,
+          "game status has wrong value");
+    check(existing_betting->started_at <= now(),
+          "the start time has not passed.");
+    check(base_price.has_value(),
+          "when you change status to live, you must give base_price");
+  }
+
+  double base = existing_betting->base_price;
+  if (status == Status::IS_LIVE && base_price.has_value()) {
+    base = base_price.value();
+  }
+
+  bettings_table.modify(existing_betting, same_payer, [&](betting &a) {
+    a.status = status;
+    a.base_price = base;
+  });
 }
 
 void lemonade::bet(const name &owner, const asset &quantity,
@@ -228,7 +264,7 @@ void lemonade::bet(const name &owner, const asset &quantity,
             !existing_betting->short_better_exists(owner),
         "you already betted");
 
-  // check(existing_betting->live() == Status::IS_LIVE, "game is not lived");
+  check(existing_betting->get_status() == Status::IS_LIVE, "game is not lived");
   check(existing_betting->betting_ended_at >= now(), "betting time is over");
 
   const double betting_ratio = 0.95;
@@ -278,7 +314,7 @@ void lemonade::claimbet(const uint64_t &bet_id, const string &win_position) {
   check(win_position == "long" || win_position == "short",
         "must choose long or short position");
 
-  // check(existing_betting->live() == Status::IS_LIVE, "game is not lived");
+  check(existing_betting->get_status() == Status::IS_LIVE, "game is not lived");
   check(existing_betting->ended_at <= now(), "betting is not over");
 
   vector<pair<name, asset>> winners;
@@ -294,8 +330,10 @@ void lemonade::claimbet(const uint64_t &bet_id, const string &win_position) {
   }
 
   for (auto k : winners) {
-    const asset price =
-        asset(k.second.amount * dividend, k.second.symbol);
+    const asset price = asset(k.second.amount * dividend, k.second.symbol);
+    if (price.amount == 0) {
+      continue;
+    }
     action(
         permission_level{get_self(), "active"_n}, "led.token"_n, "transfer"_n,
         make_tuple(get_self(), k.first, price,
@@ -304,7 +342,7 @@ void lemonade::claimbet(const uint64_t &bet_id, const string &win_position) {
   }
 
   bettings_table.modify(existing_betting, same_payer,
-                        [&](betting &a) { a.is_live = Status::FINISHED; });
+                        [&](betting &a) { a.status = Status::FINISHED; });
 }
 
 uint32_t lemonade::now() {

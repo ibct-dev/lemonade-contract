@@ -18,6 +18,7 @@ describe("lemonade.c 컨트랙트 테스트", () => {
     /* 테스트 변수들 */
     const manager = "lemonade.c"; // 컨트랙트 배포 계정
     const user = "test.p";
+    const anotherUser = "test1.p";
     let contractTester: any;
     let ledTokenTester: any;
     let ledTester: any;
@@ -55,6 +56,7 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                     ledTokenTester = await bc.getAccount("led.token");
                     ledTester = await bc.getAccount("led");
                     await bc.createAccountByCreator(user, "led");
+                    await bc.createAccountByCreator(anotherUser, "led");
                 } catch (error) {
                     console.log(
                         `ERROR ${errorCount}: account is already created: ${error}`
@@ -63,6 +65,7 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                     ledTokenTester = await bc.getAccount("led.token");
                     ledTester = await bc.getAccount("led");
                     await bc.getAccount(user);
+                    await bc.getAccount(anotherUser);
                 }
             });
             it("led.code 권한 생성", async () => {
@@ -118,6 +121,33 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                         {
                             from: "led",
                             to: user,
+                            quantity: `${initialize}.0000 LED`,
+                            memo: `SHOW ME THE MONEY`
+                        },
+                        [
+                            {
+                                actor: "led",
+                                permission: "active",
+                            },
+                        ]
+                    );
+                    expect(actionResult).to.have.all.keys([
+                        "transaction_id",
+                        "processed",
+                    ]);
+                } catch (error) {
+                    console.log(
+                        `ERROR ${errorCount}: cannot transfer: ${error}`
+                    );
+                    errorCount += 1;
+                }
+            });
+            it(`${anotherUser} 유저가 사용할 토큰을 지급함`, async () => {
+                try {
+                    const actionResult = await ledTokenTester.actions.transfer(
+                        {
+                            from: "led",
+                            to: anotherUser,
                             quantity: `${initialize}.0000 LED`,
                             memo: `SHOW ME THE MONEY`
                         },
@@ -260,14 +290,17 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                 const onlyCreated = tableResult[1];
                 expect(onlyCreated).to.deep.include({ name: "dummy" });
             });
-        });
 
-        describe("Product: rmproduct()", async () => {
-            it(`${manager} 유저가 더미 상품을 제거함`, async () => {
+            it(`${manager} 유저가 고정 상품을 생성함`, async () => {
                 try {
-                    const actionResult = await contractTester.actions.rmproduct(
+                    const actionResult = await contractTester.actions.addproduct(
                         {
-                            product_name: "dummy",
+                            product_name: "fixed",
+                            minimum_yield: 1.18,
+                            maximum_yield: 1.50, 
+                            amount_per_account: "9.0000 LED", 
+                            maximum_amount_limit: "11.0000 LED",
+                            duration: 8
                         },
                         [
                             {
@@ -282,21 +315,21 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                     ]);
                 } catch (error) {
                     console.log(
-                        `ERROR ${errorCount}: cannot remove product: ${error}`
+                        `ERROR ${errorCount}: cannot add product: ${error}`
                     );
                     errorCount += 1;
                 }
             });
-            it(`account 테이블에 제거 확인`, async () => {
+            it(`account 테이블에 생성 확인`, async () => {
                 const tableResult = await contractTester.tables.products();
                 if (debug) console.log(`Products\n${JSON.stringify(tableResult)}`);
-                const onlyCreated = tableResult[1];
-                expect(onlyCreated).to.equal(undefined);
+                const onlyCreated = tableResult[2];
+                expect(onlyCreated).to.deep.include({ name: "fixed" });
             });
         });
 
         describe("Staking: stake()", async () => {
-            it(`${user} 유저가 staking을 함`, async () => {
+            it(`${user} 유저가 일반 상품에 staking을 함`, async () => {
                 try {
                     const actionResult = await ledTokenTester.actions.transfer(
                         {
@@ -333,13 +366,169 @@ describe("lemonade.c 컨트랙트 테스트", () => {
             });
             it(`${user} 계정 잔액 확인`, async () => {
                 const balance = await bc.rpc.get_currency_balance('led.token', user, 'LED');
-                console.log(balance);
                 expect(balance[0]).to.equal(`${initialize-stake}.0000 LED`);
+            });
+
+            it(`${user} 유저가 없는 상품에 staking 함`, async () => {
+                try {
+                    const actionResult = await ledTokenTester.actions.transfer(
+                        {
+                            from: user,
+                            to: manager,
+                            quantity: `${stake}.0000 LED`,
+                            memo: `staking/done`
+                        },
+                        [
+                            {
+                                actor: user,
+                                permission: "active",
+                            },
+                        ]
+                    );
+                } catch (error) {
+                    console.log(
+                        `ERROR: cannot transfer: ${error}`
+                    );
+                    expect(true).to.be.true;
+                }
+            });
+
+            it(`${user} 유저가 고정 상품에 staking을 한도 이상으로 함`, async () => {
+                try {
+                    const actionResult = await ledTokenTester.actions.transfer(
+                        {
+                            from: user,
+                            to: manager,
+                            quantity: `${stake}.0000 LED`,
+                            memo: `staking/fixed`
+                        },
+                        [
+                            {
+                                actor: user,
+                                permission: "active",
+                            },
+                        ]
+                    );
+                } catch (error) {
+                    console.log(
+                        `ERROR: cannot transfer: ${error}`
+                    );
+                    expect(true).to.be.true;
+                }
+            });
+
+            it(`${user} 유저가 고정 상품에 staking을 정상적으로 함`, async () => {
+                try {
+                    const actionResult = await ledTokenTester.actions.transfer(
+                        {
+                            from: user,
+                            to: manager,
+                            quantity: `${stake-2}.0000 LED`,
+                            memo: `staking/fixed`
+                        },
+                        [
+                            {
+                                actor: user,
+                                permission: "active",
+                            },
+                        ]
+                    );
+                    expect(actionResult).to.have.all.keys([
+                        "transaction_id",
+                        "processed",
+                    ]);
+                } catch (error) {
+                    console.log(
+                        `ERROR ${errorCount}: cannot transfer: ${error}`
+                    );
+                    errorCount += 1;
+                }
+            });
+            it(`${anotherUser} 유저가 고정 상품에 staking을 전체 한도 이상으로 함`, async () => {
+                try {
+                    const actionResult = await ledTokenTester.actions.transfer(
+                        {
+                            from: anotherUser,
+                            to: manager,
+                            quantity: `${stake-3}.0000 LED`,
+                            memo: `staking/fixed`
+                        },
+                        [
+                            {
+                                actor: anotherUser,
+                                permission: "active",
+                            },
+                        ]
+                    );
+                } catch (error) {
+                    console.log(
+                        `ERROR: cannot transfer: ${error}`
+                    );
+                    expect(true).to.be.true;
+                }
+            });
+        });
+
+        describe("Product: rmproduct()", async () => {
+            it(`${manager} 유저가 더미 상품을 제거함`, async () => {
+                try {
+                    const actionResult = await contractTester.actions.rmproduct(
+                        {
+                            product_name: "dummy",
+                        },
+                        [
+                            {
+                                actor: manager,
+                                permission: "active",
+                            },
+                        ]
+                    );
+                    expect(actionResult).to.have.all.keys([
+                        "transaction_id",
+                        "processed",
+                    ]);
+                } catch (error) {
+                    console.log(
+                        `ERROR ${errorCount}: cannot remove product: ${error}`
+                    );
+                    errorCount += 1;
+                }
+            });
+            it(`account 테이블에 제거 확인`, async () => {
+                const tableResult = await contractTester.tables.products();
+                if (debug) console.log(`Products\n${JSON.stringify(tableResult)}`);
+                const onlyCreated = tableResult[2];
+                expect(onlyCreated).to.equal(undefined);
+            });
+
+            it(`${manager} 유저가 구매자가 있는 상품을 제거함`, async () => {
+                try {
+                    const actionResult = await contractTester.actions.rmproduct(
+                        {
+                            product_name: "normal",
+                        },
+                        [
+                            {
+                                actor: manager,
+                                permission: "active",
+                            },
+                        ]
+                    );
+                    expect(actionResult).to.have.all.keys([
+                        "transaction_id",
+                        "processed",
+                    ]);
+                } catch (error) {
+                    console.log(
+                        `ERROR: cannot remove product: ${error}`
+                    );
+                    expect(true).to.be.true;
+                }
             });
         });
 
         describe("Unstaking: unstake()", async () => {
-            it(`${user} 유저가 unstake 함`, async () => {
+            it(`${user} 유저가 일반 상품을 unstake 함`, async () => {
                 try {
                     const actionResult = await contractTester.actions.unstake(
                         {
@@ -369,13 +558,86 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                     scope: user,
                 });
                 if (debug) console.log(`Accounts\n${JSON.stringify(tableResult)}`);
-                const onlyCreated = tableResult[0];
+                const onlyCreated = tableResult[1];
                 expect(onlyCreated).to.equal(undefined);
             });
-            it(`${user} 계정 잔액 확인`, async () => {
-                const balance = await bc.rpc.get_currency_balance('led.token', user, 'LED');
-                console.log(balance);
-                expect(balance[0]).to.equal(`${initialize}.0000 LED`);
+
+            it(`${user} 유저가 시간이 안지난 고정 상품을 unstake 함`, async () => {
+                try {
+                    const actionResult = await contractTester.actions.unstake(
+                        {
+                            owner: user,
+                            product_name: "fixed",
+                        },
+                        [
+                            {
+                                actor: user,
+                                permission: "active",
+                            },
+                        ]
+                    );
+                } catch (error) {
+                    console.log(
+                        `ERROR: cannot unstaking: ${error}`
+                    );
+                    expect(true).to.be.true;
+                }
+            });
+
+            it(`${anotherUser} 유저가 가입 안한 상품을 unstake 함`, async () => {
+                try {
+                    const actionResult = await contractTester.actions.unstake(
+                        {
+                            owner: anotherUser,
+                            product_name: "fixed",
+                        },
+                        [
+                            {
+                                actor: anotherUser,
+                                permission: "active",
+                            },
+                        ]
+                    );
+                } catch (error) {
+                    console.log(
+                        `ERROR: cannot unstaking: ${error}`
+                    );
+                    expect(true).to.be.true;
+                }
+            });
+
+            it(`${user} 유저가 시간이 만료됨 고정 상품을 unstake 함`, async () => {
+                try {
+                    const actionResult = await contractTester.actions.unstake(
+                        {
+                            owner: user,
+                            product_name: "fixed",
+                        },
+                        [
+                            {
+                                actor: user,
+                                permission: "active",
+                            },
+                        ]
+                    );
+                    expect(actionResult).to.have.all.keys([
+                        "transaction_id",
+                        "processed",
+                    ]);
+                } catch (error) {
+                    console.log(
+                        `ERROR ${errorCount}: cannot unstaking: ${error}`
+                    );
+                    errorCount += 1;
+                }
+            });
+            it(`account 테이블에 삭제 확인`, async () => {
+                const tableResult = await contractTester.tables.accounts({
+                    scope: user,
+                });
+                if (debug) console.log(`Accounts\n${JSON.stringify(tableResult)}`);
+                const onlyCreated = tableResult[0];
+                expect(onlyCreated).to.equal(undefined);
             });
         });
 
@@ -384,9 +646,9 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                 try {
                     const actionResult = await contractTester.actions.createbet(
                         {
-                            started_at: seconds_since_epoch(Date.now()) + 1,
-                            betting_ended_at: seconds_since_epoch(Date.now()) + 3,
-                            ended_at: seconds_since_epoch(Date.now()) + 3, 
+                            started_at: seconds_since_epoch(Date.now()) + 2,
+                            betting_ended_at: seconds_since_epoch(Date.now()) + 6,
+                            ended_at: seconds_since_epoch(Date.now()) + 7, 
                         },
                         [
                             {
@@ -410,7 +672,88 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                 const tableResult = await contractTester.tables.bettings();
                 if (debug) console.log(`Bettings\n${JSON.stringify(tableResult)}`);
                 const onlyCreated = tableResult[0];
-                expect(onlyCreated).to.deep.include({ is_live: 0 });
+                expect(onlyCreated).to.deep.include({ status: 0 });
+            });
+        });
+
+
+        describe("Setbet: setbet()", async () => {
+            it(`${manager} 유저가 베팅 시작 시간이 안됐는데 시작함`, async () => {
+                try {
+                    const actionResult = await contractTester.actions.setbet(
+                        {
+                            bet_id:0,
+                            status:1,
+                            base_price: 1.0
+                        },
+                        [
+                            {
+                                actor: manager,
+                                permission: "active",
+                            },
+                        ]
+                    );
+                } catch (error) {
+                    console.log(
+                        `ERROR: cannot change game status to live: ${error}`
+                    );
+                    expect(true).to.be.true;
+                }
+            });
+            it(`${manager} 유저가 없는 게임을 설정하려고 함`, async () => {
+                try {
+                    const actionResult = await contractTester.actions.setbet(
+                        {
+                            bet_id:1,
+                            status:1,
+                            base_price: 1.0
+                        },
+                        [
+                            {
+                                actor: manager,
+                                permission: "active",
+                            },
+                        ]
+                    );
+                } catch (error) {
+                    console.log(
+                        `ERROR: cannot change game status: ${error}`
+                    );
+                    expect(true).to.be.true;
+                }
+            });
+            it(`${manager} 유저가 베팅 게임을 정상적으로 시작함`, async () => {
+                try {
+                    const actionResult = await contractTester.actions.setbet(
+                        {
+                            bet_id:0,
+                            status: 1,
+                            base_price: 1.0
+                        },
+                        [
+                            {
+                                actor: manager,
+                                permission: "active",
+                            },
+                        ]
+                    );
+                    expect(actionResult).to.have.all.keys([
+                        "transaction_id",
+                        "processed",
+                    ]);
+                } catch (error) {
+                    console.log(
+                        `ERROR ${errorCount}: cannot change game status to live: ${error}`
+                    );
+                    errorCount += 1;
+                }
+            });
+            it(`betting 테이블에 변경 확인`, async () => {
+                const tableResult = await contractTester.tables.bettings();
+                if (debug) console.log(`Bettings\n${JSON.stringify(tableResult)}`);
+                const onlyCreated = tableResult[0];
+                expect(onlyCreated).to.deep.include({ id: 0 });
+                expect(onlyCreated).to.deep.include({ status: 1 });
             });
         });
 
@@ -447,6 +790,29 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                 if (debug) console.log(`Bettings\n${JSON.stringify(tableResult)}`);
                 const onlyCreated = tableResult[0];
             });
+            it(`${anotherUser} 유저가 betting을 시간 다 지나서 함`, async () => {
+                try {
+                    const actionResult = await ledTokenTester.actions.transfer(
+                        {
+                            from: anotherUser,
+                            to: manager,
+                            quantity: `${stake}.0000 LED`,
+                            memo: `bet/0/long`
+                        },
+                        [
+                            {
+                                actor: anotherUser,
+                                permission: "active",
+                            },
+                        ]
+                    );
+                } catch (error) {
+                    console.log(
+                        `ERROR: cannot transfer: ${error}`
+                    );
+                    expect(true).to.be.true;
+                }
+            });
         });
 
         describe("Claimbet: claimbet()", async () => {
@@ -479,7 +845,7 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                 const tableResult = await contractTester.tables.bettings();
                 if (debug) console.log(`Bettings\n${JSON.stringify(tableResult)}`);
                 const onlyCreated = tableResult[0];
-                expect(onlyCreated).to.deep.include({ is_live: 2 });
+                expect(onlyCreated).to.deep.include({ status: 3 });
             });
             it(`${user} 계정 잔액 확인`, async () => {
                 const balance = await bc.rpc.get_currency_balance('led.token', user, 'LED');
