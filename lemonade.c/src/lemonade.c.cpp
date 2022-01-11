@@ -88,6 +88,10 @@ void lemonade::stake(const name &owner, const asset &quantity,
           "exceed product total amount limits");
   }
 
+  asset zero;
+  zero.amount = 0;
+  zero.symbol = symbol("LED", 4);
+
   uint32_t started_at = now();
   uint32_t ended_at = 0;
   if (existing_product->duration != 0) {
@@ -106,6 +110,8 @@ void lemonade::stake(const name &owner, const asset &quantity,
     a.betting = status;
     a.started_at = started_at;
     a.ended_at = ended_at;
+    a.lem_rewards = zero;
+    a.led_rewards = zero;
   });
 
   productIdx.modify(existing_product, same_payer,
@@ -114,6 +120,8 @@ void lemonade::stake(const name &owner, const asset &quantity,
 
 void lemonade::unstake(const name &owner, const name &product_name) {
   require_auth(owner);
+
+  // TODO: issue LEM with last_lem_bucket_fill
 
   products products_table(get_self(), get_self().value);
   auto productIdx = products_table.get_index<eosio::name("byname")>();
@@ -129,6 +137,8 @@ void lemonade::unstake(const name &owner, const name &product_name) {
     check(existing_account->ended_at <= now(), "account end time is not over");
   }
 
+  // TODO: Give left LEM, LED reward
+
   asset toUnstake = existing_account->balance;
 
   action(permission_level{get_self(), "active"_n}, "led.token"_n, "transfer"_n,
@@ -140,6 +150,22 @@ void lemonade::unstake(const name &owner, const name &product_name) {
   });
 
   accountIdx.erase(existing_account);
+}
+
+void lemonade::claimaccount(const name &owner, const name &product_name) {
+  require_auth(owner);
+
+  products products_table(get_self(), get_self().value);
+  auto productIdx = products_table.get_index<eosio::name("byname")>();
+  auto existing_product = productIdx.find(product_name.value);
+  check(existing_product != productIdx.end(), "product does not exist");
+
+  accounts accounts_table(get_self(), owner.value);
+  auto accountIdx = accounts_table.get_index<eosio::name("byproductid")>();
+  auto existing_account = accountIdx.find(existing_product->id);
+  check(existing_account != accountIdx.end(), "owner does not has product");
+
+  // TODO: Get LEM, LED reward and transfer and set table
 }
 
 void lemonade::changeyield(const name &owner, const name &product_name,

@@ -21,6 +21,10 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
 private:
   const enum Status { NOT_STARTED, IS_LIVE, BETTING_FINISH, FINISHED };
 
+  struct [[eosio::table]] config {
+    block_timestamp last_lem_bucket_fill;
+  };
+
   struct [[eosio::table]] product {
     id_type id;
     name name;
@@ -46,6 +50,8 @@ private:
                          // (eosio::current_time_point().sec_since_epoch());
     uint32_t
         ended_at; // (uint32_t) (eosio::current_time_point().sec_since_epoch());
+    asset lem_rewards;
+    asset led_rewards;
 
     uint64_t primary_key() const { return id; }
     uint64_t get_product_id() const { return product_id; }
@@ -84,6 +90,8 @@ private:
     uint8_t get_status() const { return status; }
   };
 
+  typedef singleton<"config"_n, config> config_table;
+
   typedef eosio::multi_index<
       "products"_n, product,
       indexed_by<"byname"_n,
@@ -115,9 +123,10 @@ private:
   };
 
 public:
+  config_table config;
   using contract::contract;
   lemonade(name receiver, name code, datastream<const char *> ds)
-      : contract(receiver, code, ds) {}
+      : contract(receiver, code, ds), config(get_self(), get_self().value) {}
 
   [[eosio::action]] void addproduct(
       const name &product_name, const double &minimum_yield,
@@ -128,6 +137,9 @@ public:
   [[eosio::action]] void rmproduct(const name &product_name);
 
   [[eosio::action]] void unstake(const name &owner, const name &product_name);
+
+  [[eosio::action]] void claimaccount(const name &owner,
+                                      const name &product_name);
 
   [[eosio::action]] void changeyield(const name &owner,
                                      const name &product_name,
@@ -154,6 +166,7 @@ public:
   using rmproduct_action =
       eosio::action_wrapper<"rmproduct"_n, &lemonade::rmproduct>;
   using unstake_action = eosio::action_wrapper<"unstake"_n, &lemonade::unstake>;
+  using claimaccount_action = eosio::action_wrapper<"claimaccount"_n, &lemonade::claimaccount>;
   using changeyield_action =
       eosio::action_wrapper<"changeyield"_n, &lemonade::changeyield>;
   using createbet_action =
