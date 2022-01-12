@@ -218,6 +218,38 @@ describe("lemonade.c 컨트랙트 테스트", () => {
             }
         });
 
+        describe("Initialize: init()", async () => {
+            it(`${manager} 유저가 컨트랙트 세팅 초기화 실행`, async () => {
+                try {
+                    const actionResult = await contractTester.actions.init(
+                        {},
+                        [
+                            {
+                                actor: manager,
+                                permission: "active",
+                            },
+                        ]
+                    );
+                    expect(actionResult).to.have.all.keys([
+                        "transaction_id",
+                        "processed",
+                    ]);
+                } catch (error) {
+                    console.log(
+                        `ERROR ${errorCount}: cannot initialize: ${error}`
+                    );
+                    errorCount += 1;
+                }
+            });
+            it(`config 테이블에 생성 확인`, async () => {
+                const tableResult = await contractTester.tables.configs();
+                if (debug) console.log(`Configs\n${JSON.stringify(tableResult)}`);
+                const onlyCreated = tableResult[0];
+                expect(onlyCreated).to.deep.include({ id: 0 });
+                expect(onlyCreated).to.deep.include({ is_active: 1 });
+            });
+        });
+
         describe("Product: addproduct()", async () => {
             it(`${manager} 유저가 일반 예금 상품을 생성함`, async () => {
                 try {

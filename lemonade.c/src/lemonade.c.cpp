@@ -1,5 +1,19 @@
 #include "lemonade.c/lemonade.c.hpp"
 
+void lemonade::init() {
+  require_auth(get_self());
+
+  configs config_table(get_self(), get_self().value);
+  auto existing_config = config_table.find(0);
+  if (existing_config == config_table.end()) {
+    config_table.emplace(get_self(), [&](config &a) {
+      a.id = config_table.available_primary_key();
+      a.is_active = true;
+      a.last_lem_bucket_fill = now();
+    });
+  }
+}
+
 void lemonade::addproduct(const name &product_name, const double &minimum_yield,
                           const double &maximum_yield,
                           const asset &amount_per_account,
@@ -121,7 +135,18 @@ void lemonade::stake(const name &owner, const asset &quantity,
 void lemonade::unstake(const name &owner, const name &product_name) {
   require_auth(owner);
 
-  // TODO: issue LEM with last_lem_bucket_fill
+  configs config_table(get_self(), get_self().value);
+  auto existing_config = config_table.find(0);
+  check(existing_config != config_table.end(), "contract not initialized");
+
+  const auto ct = now();
+  const auto secs_since_last_fill = (ct - existing_config->last_lem_bucket_fill);
+
+  config_table.modify(existing_config, same_payer, [&](config &a) {
+    a.last_lem_bucket_fill = ct;
+  });
+
+  // TODO: issue LEM with secs_since_last_fill
 
   products products_table(get_self(), get_self().value);
   auto productIdx = products_table.get_index<eosio::name("byname")>();

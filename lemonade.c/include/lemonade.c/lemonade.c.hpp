@@ -22,7 +22,11 @@ private:
   const enum Status { NOT_STARTED, IS_LIVE, BETTING_FINISH, FINISHED };
 
   struct [[eosio::table]] config {
-    block_timestamp last_lem_bucket_fill;
+    id_type id;
+    bool is_active;
+    uint32_t last_lem_bucket_fill;
+
+    uint64_t primary_key() const { return id; }
   };
 
   struct [[eosio::table]] product {
@@ -90,7 +94,7 @@ private:
     uint8_t get_status() const { return status; }
   };
 
-  typedef singleton<"config"_n, config> config_table;
+  typedef eosio::multi_index<"configs"_n, config> configs;
 
   typedef eosio::multi_index<
       "products"_n, product,
@@ -123,10 +127,11 @@ private:
   };
 
 public:
-  config_table config;
   using contract::contract;
   lemonade(name receiver, name code, datastream<const char *> ds)
-      : contract(receiver, code, ds), config(get_self(), get_self().value) {}
+      : contract(receiver, code, ds) {}
+
+  [[eosio::action]] void init();
 
   [[eosio::action]] void addproduct(
       const name &product_name, const double &minimum_yield,
@@ -161,12 +166,15 @@ public:
       const name &from, const name &to, const asset &quantity,
       const string &memo);
 
+  using init_action =
+      eosio::action_wrapper<"init"_n, &lemonade::init>;
   using addproduct_action =
       eosio::action_wrapper<"addproduct"_n, &lemonade::addproduct>;
   using rmproduct_action =
       eosio::action_wrapper<"rmproduct"_n, &lemonade::rmproduct>;
   using unstake_action = eosio::action_wrapper<"unstake"_n, &lemonade::unstake>;
-  using claimaccount_action = eosio::action_wrapper<"claimaccount"_n, &lemonade::claimaccount>;
+  using claimaccount_action =
+      eosio::action_wrapper<"claimaccount"_n, &lemonade::claimaccount>;
   using changeyield_action =
       eosio::action_wrapper<"changeyield"_n, &lemonade::changeyield>;
   using createbet_action =
