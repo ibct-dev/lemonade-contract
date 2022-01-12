@@ -140,13 +140,19 @@ void lemonade::unstake(const name &owner, const name &product_name) {
   check(existing_config != config_table.end(), "contract not initialized");
 
   const auto ct = now();
-  const auto secs_since_last_fill = (ct - existing_config->last_lem_bucket_fill);
+  const auto secs_since_last_fill =
+      (ct - existing_config->last_lem_bucket_fill);
 
-  config_table.modify(existing_config, same_payer, [&](config &a) {
-    a.last_lem_bucket_fill = ct;
-  });
+  config_table.modify(existing_config, same_payer,
+                      [&](config &a) { a.last_lem_bucket_fill = ct; });
 
-  // TODO: issue LEM with secs_since_last_fill
+  asset new_token;
+  new_token.amount = secs_since_last_fill * 2;
+  new_token.symbol = symbol("LEM", 4);
+
+  action(permission_level{get_self(), "active"_n}, "led.token"_n, "issue"_n,
+         make_tuple(get_self(), new_token, string("issue")))
+      .send();
 
   products products_table(get_self(), get_self().value);
   auto productIdx = products_table.get_index<eosio::name("byname")>();
@@ -162,13 +168,22 @@ void lemonade::unstake(const name &owner, const name &product_name) {
     check(existing_account->ended_at <= now(), "account end time is not over");
   }
 
-  // TODO: Give left LEM, LED reward
+  // TODO : Change to correct amount
+  asset to_owner_led = existing_account->balance;
+  asset to_owner_lem = new_token;
+  to_owner_lem.amount = 0.0001; // For test
 
-  asset toUnstake = existing_account->balance;
+  auto sender_id = now();
 
-  action(permission_level{get_self(), "active"_n}, "led.token"_n, "transfer"_n,
-         make_tuple(get_self(), owner, toUnstake, string("unstake")))
-      .send();
+  eosio::transaction txn;
+  txn.actions.emplace_back(
+      permission_level{get_self(), "active"_n}, "led.token"_n, "transfer"_n,
+      make_tuple(get_self(), owner, to_owner_led, string("unstake")));
+  txn.actions.emplace_back(
+      permission_level{get_self(), "active"_n}, "led.token"_n, "transfer"_n,
+      make_tuple(get_self(), owner, to_owner_lem, string("unstake")));
+  txn.delay_sec = 100;
+  txn.send(sender_id, get_self());
 
   productIdx.modify(existing_product, same_payer, [&](product &a) {
     a.current_amount -= existing_account->balance;

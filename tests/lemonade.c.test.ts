@@ -24,6 +24,7 @@ describe("lemonade.c 컨트랙트 테스트", () => {
     let ledTester: any;
     let errorCount = 0;
     const initialize = 10000;
+    const lemInitialize = 10000;
     const stake = 10;
 
     describe("테스트가 시작되면, 블록체인이 연결 되어야 함", async () => {
@@ -165,6 +166,58 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                 } catch (error) {
                     console.log(
                         `ERROR ${errorCount}: cannot transfer: ${error}`
+                    );
+                    errorCount += 1;
+                }
+            });
+            it(`${manager} 유저가 사용할 토큰을 지급함`, async () => {
+                try {
+                    const actionResult = await ledTokenTester.actions.transfer(
+                        {
+                            from: "led",
+                            to: manager,
+                            quantity: `${initialize}.0000 LED`,
+                            memo: `SHOW ME THE MONEY`
+                        },
+                        [
+                            {
+                                actor: "led",
+                                permission: "active",
+                            },
+                        ]
+                    );
+                    expect(actionResult).to.have.all.keys([
+                        "transaction_id",
+                        "processed",
+                    ]);
+                } catch (error) {
+                    console.log(
+                        `ERROR ${errorCount}: cannot transfer: ${error}`
+                    );
+                    errorCount += 1;
+                }
+            });
+            it(`${manager} 유저가 사용할 거버넌스 토큰 생성`, async () => {
+                try {
+                    const actionResult = await ledTokenTester.actions.create(
+                        {
+                            issuer: manager,
+                            maximum_supply: `${lemInitialize}.0000 LEM`,
+                        },
+                        [
+                            {
+                                actor: "led.token",
+                                permission: "active",
+                            },
+                        ]
+                    );
+                    expect(actionResult).to.have.all.keys([
+                        "transaction_id",
+                        "processed",
+                    ]);
+                } catch (error) {
+                    console.log(
+                        `ERROR ${errorCount}: cannot create: ${error}`
                     );
                     errorCount += 1;
                 }
@@ -592,6 +645,10 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                 if (debug) console.log(`Accounts\n${JSON.stringify(tableResult)}`);
                 const onlyCreated = tableResult[1];
                 expect(onlyCreated).to.equal(undefined);
+            });
+            it(`${manager} 계정 LEM 잔액 확인`, async () => {
+                const balance = await bc.rpc.get_currency_balance('led.token', manager, 'LEM');
+                console.log(balance);
             });
 
             it(`${user} 유저가 시간이 안지난 고정 상품을 unstake 함`, async () => {
