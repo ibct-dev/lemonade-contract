@@ -147,7 +147,7 @@ void lemonade::unstake(const name &owner, const name &product_name) {
                       [&](config &a) { a.last_lem_bucket_fill = ct; });
 
   asset new_token;
-  new_token.amount = secs_since_last_fill * 2;
+  new_token.amount = secs_since_last_fill * 2 * 10000;
   new_token.symbol = symbol("LEM", 4);
 
   action(permission_level{get_self(), "active"_n}, "led.token"_n, "issue"_n,
@@ -171,9 +171,11 @@ void lemonade::unstake(const name &owner, const name &product_name) {
   // TODO : Change to correct amount
   asset to_owner_led = existing_account->balance;
   asset to_owner_lem = new_token;
-  to_owner_lem.amount = 0.0001; // For test
+  to_owner_lem.amount = 1; // For test
 
   auto sender_id = now();
+
+  check(to_owner_led.amount > 0 && to_owner_lem.amount > 0, "unstake amount must be not zero");
 
   eosio::transaction txn;
   txn.actions.emplace_back(
