@@ -23,9 +23,9 @@ describe("lemonade.c 컨트랙트 테스트", () => {
     let ledTokenTester: any;
     let ledTester: any;
     let errorCount = 0;
-    const initialize = 10000;
-    const lemInitialize = 10000;
-    const stake = 10;
+    const initialize = 1000000;
+    const lemInitialize = 1000000;
+    const stake = 10000;
 
     describe("테스트가 시작되면, 블록체인이 연결 되어야 함", async () => {
         it("블록체인을 연결함", async () => {
@@ -382,10 +382,10 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                         {
                             product_name: "fixed",
                             minimum_yield: 1.18,
-                            maximum_yield: 1.50, 
-                            amount_per_account: "9.0000 LED", 
-                            maximum_amount_limit: "11.0000 LED",
-                            duration: 8
+                            maximum_yield: 1.71, 
+                            amount_per_account: "9000.0000 LED", 
+                            maximum_amount_limit: "11000.0000 LED",
+                            duration: 21
                         },
                         [
                             {
@@ -508,7 +508,7 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                         {
                             from: user,
                             to: manager,
-                            quantity: `${stake-2}.0000 LED`,
+                            quantity: `${stake-2000}.0000 LED`,
                             memo: `staking/fixed`
                         },
                         [
@@ -535,7 +535,7 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                         {
                             from: anotherUser,
                             to: manager,
-                            quantity: `${stake-3}.0000 LED`,
+                            quantity: `${stake-3000}.0000 LED`,
                             memo: `staking/fixed`
                         },
                         [
@@ -607,8 +607,231 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                     console.log(
                         `ERROR: cannot remove product: ${error}`
                     );
+                }
+            });
+        });
+
+        describe("Claim: claimled() & claimlem", async () => {
+            it(`${anotherUser} 유저가 가입 안한 상품에대한 led 중간보상을 수령함`, async () => {
+                try {
+                    const actionResult = await contractTester.actions.claimled(
+                        {
+                            owner: anotherUser,
+                            product_name: "normal",
+                        },
+                        [
+                            {
+                                actor: anotherUser,
+                                permission: "active",
+                            },
+                        ]
+                    );
+                } catch (error) {
+                    console.log(
+                        `ERROR ${errorCount}: cannot claimled: ${error}`
+                    );
                     expect(true).to.be.true;
                 }
+            });
+
+            it(`${anotherUser} 유저가 가입 안한 상품에대한 lem 중간보상을 수령함`, async () => {
+                try {
+                    const actionResult = await contractTester.actions.claimlem(
+                        {
+                            owner: anotherUser,
+                            product_name: "normal",
+                        },
+                        [
+                            {
+                                actor: anotherUser,
+                                permission: "active",
+                            },
+                        ]
+                    );
+                } catch (error) {
+                    console.log(
+                        `ERROR ${errorCount}: cannot claimlem: ${error}`
+                    );
+                    expect(true).to.be.true;
+                }
+            });
+
+            it(`${user} 유저가 일반 상품에 lem 중간보상을 수령하다가 실패`, async () => {
+                try {
+                    const actionResult = await contractTester.actions.claimlem(
+                        {
+                            owner: user,
+                            product_name: "normal",
+                        },
+                        [
+                            {
+                                actor: user,
+                                permission: "active",
+                            },
+                        ]
+                    );
+                } catch (error) {
+                    console.log(
+                        `ERROR ${errorCount}: cannot claimlem: ${error}`
+                    );
+                    expect(true).to.be.true;
+                }
+            });
+
+            it(`${user} 유저가 일반상품에 대한 led 중간보상을 수령함`, async () => {
+                try {
+                    const actionResult = await contractTester.actions.claimled(
+                        {
+                            owner: user,
+                            product_name: "normal",
+                        },
+                        [
+                            {
+                                actor: user,
+                                permission: "active",
+                            },
+                        ]
+                    );
+                    expect(actionResult).to.have.all.keys([
+                        "transaction_id",
+                        "processed",
+                    ]);
+                } catch (error) {
+                    console.log(
+                        `ERROR ${errorCount}: cannot claimled: ${error}`
+                    );
+                    errorCount += 1;
+                }
+            });
+            it(`account 테이블에 변경 확인`, async () => {
+                const tableResult = await contractTester.tables.accounts({
+                    scope: user,
+                });
+                if (debug) console.log(`Accounts\n${JSON.stringify(tableResult)}`);
+            });
+
+            it(`${user} 유저가 고정상품에 대한 led 중간보상을 수령함`, async () => {
+                try {
+                    const actionResult = await contractTester.actions.claimled(
+                        {
+                            owner: user,
+                            product_name: "fixed",
+                        },
+                        [
+                            {
+                                actor: user,
+                                permission: "active",
+                            },
+                        ]
+                    );
+                    expect(actionResult).to.have.all.keys([
+                        "transaction_id",
+                        "processed",
+                    ]);
+                } catch (error) {
+                    console.log(
+                        `ERROR ${errorCount}: cannot claimled: ${error}`
+                    );
+                    errorCount += 1;
+                }
+            });
+            it(`account 테이블에 변경 확인`, async () => {
+                const tableResult = await contractTester.tables.accounts({
+                    scope: user,
+                });
+                if (debug) console.log(`Accounts\n${JSON.stringify(tableResult)}`);
+            });
+
+            it(`${user} 유저가 고정상품에 대한 lem 중간보상을 수령함`, async () => {
+                try {
+                    const actionResult = await contractTester.actions.claimlem(
+                        {
+                            owner: user,
+                            product_name: "fixed",
+                        },
+                        [
+                            {
+                                actor: user,
+                                permission: "active",
+                            },
+                        ]
+                    );
+                    expect(actionResult).to.have.all.keys([
+                        "transaction_id",
+                        "processed",
+                    ]);
+                } catch (error) {
+                    console.log(
+                        `ERROR ${errorCount}: cannot claimlem: ${error}`
+                    );
+                    errorCount += 1;
+                }
+            });
+            it(`account 테이블에 변경 확인`, async () => {
+                const tableResult = await contractTester.tables.accounts({
+                    scope: user,
+                });
+                if (debug) console.log(`Accounts\n${JSON.stringify(tableResult)}`);
+            });
+        });
+
+        describe("Changeyield: changeyield()", async () => {
+            it(`${manager} 유저가 범위 밖의 이자율을 설정 함`, async () => {
+                try {
+                    const actionResult = await contractTester.actions.changeyield(
+                        {
+                            owner: user,
+                            product_name: "normal",
+                            yield: 2,
+                            memo: "just do it"
+                        },
+                        [
+                            {
+                                actor: manager,
+                                permission: "active",
+                            },
+                        ]
+                    );
+                } catch (error) {
+                    console.log(
+                        `ERROR ${errorCount}: cannot changeyield: ${error}`
+                    );
+                    expect(true).to.be.true;
+                }
+            });
+
+            it(`${manager} 유저가 범위 내의 이자율을 설정 함`, async () => {
+                try {
+                    const actionResult = await contractTester.actions.changeyield(
+                        {
+                            owner: user,
+                            product_name: "fixed",
+                            yield: 1.70,
+                            memo: "just do it"
+                        },
+                        [
+                            {
+                                actor: manager,
+                                permission: "active",
+                            },
+                        ]
+                    );
+                    expect(actionResult).to.have.all.keys([
+                        "transaction_id",
+                        "processed",
+                    ]);
+                } catch (error) {
+                    console.log(
+                        `ERROR ${errorCount}: cannot changeyield: ${error}`
+                    );
+                    errorCount +=1;
+                }
+            });
+            it(`account 테이블에 변경 확인`, async () => {
+                const tableResult = await contractTester.tables.accounts({
+                    scope: user,
+                });
+                if (debug) console.log(`Accounts\n${JSON.stringify(tableResult)}`);
             });
         });
 
@@ -631,6 +854,8 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                         "transaction_id",
                         "processed",
                     ]);
+                    const balance = await bc.rpc.get_currency_balance('led.token', user, 'LED');
+                    console.log(balance);    
                 } catch (error) {
                     console.log(
                         `ERROR ${errorCount}: cannot unstaking: ${error}`
@@ -713,6 +938,8 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                         "transaction_id",
                         "processed",
                     ]);
+                    const balance = await bc.rpc.get_currency_balance('led.token', user, 'LED');
+                    console.log(balance);    
                 } catch (error) {
                     console.log(
                         `ERROR ${errorCount}: cannot unstaking: ${error}`

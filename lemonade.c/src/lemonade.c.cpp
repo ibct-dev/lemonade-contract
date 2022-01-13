@@ -29,9 +29,7 @@ void lemonade::addproduct(const name &product_name, const double &minimum_yield,
   check(minimum_yield <= maximum_yield, "maximum yield must be same or bigger "
                                         "then minimum yield");
 
-  asset zero;
-  zero.amount = 0;
-  zero.symbol = amount_per_account.symbol;
+  asset zero = asset(0, amount_per_account.symbol);
 
   asset limit = zero;
   uint32_t dur = 0;
@@ -102,9 +100,8 @@ void lemonade::stake(const name &owner, const asset &quantity,
           "exceed product total amount limits");
   }
 
-  asset zero;
-  zero.amount = 0;
-  zero.symbol = symbol("LED", 4);
+  asset zero_led = asset(0, symbol("LED", 4));
+  asset zero_lem = asset(0, symbol("LEM", 4));
 
   uint32_t started_at = now();
   uint32_t ended_at = 0;
@@ -124,8 +121,10 @@ void lemonade::stake(const name &owner, const asset &quantity,
     a.betting = status;
     a.started_at = started_at;
     a.ended_at = ended_at;
-    a.lem_rewards = zero;
-    a.led_rewards = zero;
+    a.lem_rewards = zero_lem;
+    a.led_rewards = zero_led;
+    a.last_claim_led_reward = started_at;
+    a.last_claim_lem_reward = started_at;
   });
 
   productIdx.modify(existing_product, same_payer,
@@ -139,16 +138,14 @@ void lemonade::unstake(const name &owner, const name &product_name) {
   auto existing_config = config_table.find(0);
   check(existing_config != config_table.end(), "contract not initialized");
 
-  const auto ct = now();
+  auto current = now();
   const auto secs_since_last_fill =
-      (ct - existing_config->last_lem_bucket_fill);
+      (current - existing_config->last_lem_bucket_fill);
 
   config_table.modify(existing_config, same_payer,
-                      [&](config &a) { a.last_lem_bucket_fill = ct; });
+                      [&](config &a) { a.last_lem_bucket_fill = current; });
 
-  asset new_token;
-  new_token.amount = secs_since_last_fill * 2 * 10000;
-  new_token.symbol = symbol("LEM", 4);
+  asset new_token = asset(secs_since_last_fill * 2 * 10000, symbol("LEM", 4));
 
   action(permission_level{get_self(), "active"_n}, "led.token"_n, "issue"_n,
          make_tuple(get_self(), new_token, string("issue")))
@@ -168,23 +165,46 @@ void lemonade::unstake(const name &owner, const name &product_name) {
     check(existing_account->ended_at <= now(), "account end time is not over");
   }
 
-  // TODO : Change to correct amount
+  if (existing_account->ended_at != 0) {
+    current = existing_account->ended_at;
+  }
+
+  const auto secs_since_last_reward =
+      (current - existing_account->last_claim_led_reward);
+  const auto yield_per_sec =
+      (existing_account->current_yield - 1) / secondsPerYear;
   asset to_owner_led = existing_account->balance;
+
+  if (existing_product->duration != 0) {
+    asset total_reward = asset(existing_account->balance.amount *
+                                   (existing_product->duration) * yield_per_sec,
+                               symbol("LED", 4));
+    to_owner_led += (total_reward - existing_account->led_rewards);
+
+  } else {
+    to_owner_led.amount += (existing_account->balance.amount *
+                            secs_since_last_reward * yield_per_sec);
+  }
+
+  // TODO : Change to correct amount
   asset to_owner_lem = new_token;
   to_owner_lem.amount = 1; // For test
 
   auto sender_id = now();
 
-  check(to_owner_led.amount > 0 && to_owner_lem.amount > 0, "unstake amount must be not zero");
+  check(to_owner_led.amount > 0 && to_owner_lem.amount > 0,
+        "unstake amount must not be zero");
 
   eosio::transaction txn;
   txn.actions.emplace_back(
       permission_level{get_self(), "active"_n}, "led.token"_n, "transfer"_n,
       make_tuple(get_self(), owner, to_owner_led, string("unstake")));
-  txn.actions.emplace_back(
-      permission_level{get_self(), "active"_n}, "led.token"_n, "transfer"_n,
-      make_tuple(get_self(), owner, to_owner_lem, string("unstake")));
-  txn.delay_sec = 100;
+  if (existing_product->duration != 0) {
+    txn.actions.emplace_back(
+        permission_level{get_self(), "active"_n}, "led.token"_n, "transfer"_n,
+        make_tuple(get_self(), owner, to_owner_lem, string("unstake")));
+  }
+  txn.delay_sec = delay_transfer_sec;
   txn.send(sender_id, get_self());
 
   productIdx.modify(existing_product, same_payer, [&](product &a) {
@@ -194,7 +214,7 @@ void lemonade::unstake(const name &owner, const name &product_name) {
   accountIdx.erase(existing_account);
 }
 
-void lemonade::claimaccount(const name &owner, const name &product_name) {
+void lemonade::claimled(const name &owner, const name &product_name) {
   require_auth(owner);
 
   products products_table(get_self(), get_self().value);
@@ -207,7 +227,77 @@ void lemonade::claimaccount(const name &owner, const name &product_name) {
   auto existing_account = accountIdx.find(existing_product->id);
   check(existing_account != accountIdx.end(), "owner does not has product");
 
-  // TODO: Get LEM, LED reward and transfer and set table
+  auto current = now();
+  if (existing_product->duration != 0) {
+    current = now() >= existing_account->ended_at ? existing_account->ended_at
+                                                  : now();
+  }
+
+  const auto secs_since_last_reward =
+      (current - existing_account->last_claim_led_reward);
+
+  const auto yield_per_sec =
+      (existing_account->current_yield - 1) / secondsPerYear;
+  asset to_owner_led = asset(0, symbol("LED", 4));
+  to_owner_led.amount =
+      existing_account->balance.amount * secs_since_last_reward * yield_per_sec;
+
+  check(to_owner_led.amount > 0, "reward must not be zero or negative");
+
+  action(permission_level{get_self(), "active"_n}, "led.token"_n, "transfer"_n,
+         make_tuple(get_self(), owner, to_owner_led, string("claim led")))
+      .send();
+
+  accountIdx.modify(existing_account, same_payer, [&](account &a) {
+    a.last_claim_led_reward = current;
+    a.led_rewards += to_owner_led;
+  });
+}
+
+void lemonade::claimlem(const name &owner, const name &product_name) {
+  require_auth(owner);
+
+  configs config_table(get_self(), get_self().value);
+  auto existing_config = config_table.find(0);
+  check(existing_config != config_table.end(), "contract not initialized");
+
+  products products_table(get_self(), get_self().value);
+  auto productIdx = products_table.get_index<eosio::name("byname")>();
+  auto existing_product = productIdx.find(product_name.value);
+  check(existing_product != productIdx.end(), "product does not exist");
+
+  accounts accounts_table(get_self(), owner.value);
+  auto accountIdx = accounts_table.get_index<eosio::name("byproductid")>();
+  auto existing_account = accountIdx.find(existing_product->id);
+  check(existing_account != accountIdx.end(), "owner does not has product");
+
+  check(existing_product->duration != 0, "fixed product only can receive lem");
+
+  auto current =
+      now() >= existing_account->ended_at ? existing_account->ended_at : now();
+  const auto secs_since_last_fill =
+      (current - existing_config->last_lem_bucket_fill);
+
+  asset new_token = asset(secs_since_last_fill * 2 * 10000, symbol("LEM", 4));
+
+  action(permission_level{get_self(), "active"_n}, "led.token"_n, "issue"_n,
+         make_tuple(get_self(), new_token, string("issue")))
+      .send();
+
+  // TODO: Change to correct lem value
+  asset to_owner_lem = asset(0, symbol("LEM", 4));
+  to_owner_lem.amount = 1;
+
+  check(to_owner_lem.amount != 0, "reward must not be zero or negative");
+
+  action(permission_level{get_self(), "active"_n}, "led.token"_n, "transfer"_n,
+         make_tuple(get_self(), owner, to_owner_lem, string("claim lem")))
+      .send();
+
+  accountIdx.modify(existing_account, same_payer, [&](account &a) {
+    a.last_claim_lem_reward = current;
+    a.lem_rewards += to_owner_lem;
+  });
 }
 
 void lemonade::changeyield(const name &owner, const name &product_name,
@@ -238,9 +328,7 @@ void lemonade::createbet(const uint32_t &started_at,
   require_auth(get_self());
   bettings bettings_table(get_self(), get_self().value);
 
-  asset zero;
-  zero.amount = 0;
-  zero.symbol = symbol("LED", 4);
+  asset zero = asset(0, symbol("LED", 4));
 
   auto current = now();
   check(started_at >= 0 && betting_ended_at >= 0 && ended_at >= 0,
@@ -321,9 +409,7 @@ void lemonade::bet(const name &owner, const asset &quantity,
   asset new_short_amount = existing_betting->short_betting_amount;
   asset new_long_amount = existing_betting->long_betting_amount;
 
-  asset zero;
-  zero.amount = 0;
-  zero.symbol = symbol("LED", 4);
+  asset zero = asset(0, symbol("LED", 4));
 
   double short_dividend = 0;
   double long_dividend = 0;

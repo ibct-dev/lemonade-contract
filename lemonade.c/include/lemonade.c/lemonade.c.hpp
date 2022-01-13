@@ -12,6 +12,7 @@
 
 using namespace eosio;
 using namespace std;
+using namespace config;
 
 using std::string;
 using std::vector;
@@ -19,6 +20,7 @@ typedef uint64_t id_type;
 
 class [[eosio::contract("lemonade.c")]] lemonade : public contract {
 private:
+  const uint64_t delay_transfer_sec = 1;
   const enum Status { NOT_STARTED, IS_LIVE, BETTING_FINISH, FINISHED };
 
   struct [[eosio::table]] config {
@@ -54,6 +56,8 @@ private:
                          // (eosio::current_time_point().sec_since_epoch());
     uint32_t
         ended_at; // (uint32_t) (eosio::current_time_point().sec_since_epoch());
+    uint32_t last_claim_led_reward;
+    uint32_t last_claim_lem_reward;
     asset lem_rewards;
     asset led_rewards;
 
@@ -143,8 +147,9 @@ public:
 
   [[eosio::action]] void unstake(const name &owner, const name &product_name);
 
-  [[eosio::action]] void claimaccount(const name &owner,
-                                      const name &product_name);
+  [[eosio::action]] void claimled(const name &owner, const name &product_name);
+
+  [[eosio::action]] void claimlem(const name &owner, const name &product_name);
 
   [[eosio::action]] void changeyield(const name &owner,
                                      const name &product_name,
@@ -166,15 +171,16 @@ public:
       const name &from, const name &to, const asset &quantity,
       const string &memo);
 
-  using init_action =
-      eosio::action_wrapper<"init"_n, &lemonade::init>;
+  using init_action = eosio::action_wrapper<"init"_n, &lemonade::init>;
   using addproduct_action =
       eosio::action_wrapper<"addproduct"_n, &lemonade::addproduct>;
   using rmproduct_action =
       eosio::action_wrapper<"rmproduct"_n, &lemonade::rmproduct>;
   using unstake_action = eosio::action_wrapper<"unstake"_n, &lemonade::unstake>;
-  using claimaccount_action =
-      eosio::action_wrapper<"claimaccount"_n, &lemonade::claimaccount>;
+  using claimled_action =
+      eosio::action_wrapper<"claimled"_n, &lemonade::claimled>;
+  using claimlem_action =
+      eosio::action_wrapper<"claimlem"_n, &lemonade::claimlem>;
   using changeyield_action =
       eosio::action_wrapper<"changeyield"_n, &lemonade::changeyield>;
   using createbet_action =
