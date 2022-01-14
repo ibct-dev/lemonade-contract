@@ -16,6 +16,7 @@ void lemonade::init() {
 
 void lemonade::addproduct(const name &product_name, const double &minimum_yield,
                           const double &maximum_yield,
+                          const bool &has_lem_rewards,
                           const asset &amount_per_account,
                           const optional<asset> &maximum_amount_limit,
                           const optional<uint32_t> &duration) {
@@ -55,6 +56,7 @@ void lemonade::addproduct(const name &product_name, const double &minimum_yield,
     a.maximum_amount_limit = limit;
     a.minimum_yield = minimum_yield;
     a.maximum_yield = maximum_yield;
+    a.has_lem_rewards = has_lem_rewards;
   });
 }
 
@@ -175,7 +177,7 @@ void lemonade::unstake(const name &owner, const name &product_name) {
       (existing_account->current_yield - 1) / secondsPerYear;
   asset to_owner_led = existing_account->balance;
 
-  if (existing_product->duration != 0) {
+  if (existing_product->has_lem_rewards == true) {
     asset total_reward = asset(existing_account->balance.amount *
                                    (existing_product->duration) * yield_per_sec,
                                symbol("LED", 4));
@@ -271,7 +273,8 @@ void lemonade::claimlem(const name &owner, const name &product_name) {
   auto existing_account = accountIdx.find(existing_product->id);
   check(existing_account != accountIdx.end(), "owner does not has product");
 
-  check(existing_product->duration != 0, "fixed product only can receive lem");
+  check(existing_product->has_lem_rewards,
+        "there are no LEM rewards for this product ");
 
   auto current =
       now() >= existing_account->ended_at ? existing_account->ended_at : now();

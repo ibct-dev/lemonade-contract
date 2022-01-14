@@ -41,6 +41,7 @@ private:
     asset maximum_amount_limit;
     double minimum_yield;
     double maximum_yield;
+    bool has_lem_rewards;
 
     uint64_t primary_key() const { return id; }
     uint64_t get_name() const { return name.value; }
@@ -139,7 +140,8 @@ public:
 
   [[eosio::action]] void addproduct(
       const name &product_name, const double &minimum_yield,
-      const double &maximum_yield, const asset &amount_per_account,
+      const double &maximum_yield, const bool &has_lem_rewards,
+      const asset &amount_per_account,
       const optional<asset> &maximum_amount_limit,
       const optional<uint32_t> &duration);
 
