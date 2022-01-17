@@ -171,37 +171,39 @@ void lemonade::unstake(const name &owner, const name &product_name) {
     current = existing_account->ended_at;
   }
 
-  const auto secs_since_last_reward =
+  const auto secs_since_last_led_reward =
       (current - existing_account->last_claim_led_reward);
   const auto yield_per_sec =
       (existing_account->current_yield - 1) / secondsPerYear;
   asset to_owner_led = existing_account->balance;
+  asset to_owner_lem = new_token;
 
   if (existing_product->has_lem_rewards == true) {
-    asset total_reward = asset(existing_account->balance.amount *
+    asset total_led_reward = asset(existing_account->balance.amount *
                                    (existing_product->duration) * yield_per_sec,
                                symbol("LED", 4));
-    to_owner_led += (total_reward - existing_account->led_rewards);
+    to_owner_led += (total_led_reward - existing_account->led_rewards);
+    asset total_lem_reward = asset(
+        existing_account->balance.amount *
+            (existing_product->duration / secondsPerDay) * lem_reward_rate,
+        symbol("LEM",4));
+    to_owner_lem = total_lem_reward - existing_account->lem_rewards;
 
   } else {
     to_owner_led.amount += (existing_account->balance.amount *
-                            secs_since_last_reward * yield_per_sec);
+                            secs_since_last_led_reward * yield_per_sec);
   }
-
-  // TODO : Change to correct amount
-  asset to_owner_lem = new_token;
-  to_owner_lem.amount = 1; // For test
 
   auto sender_id = now();
 
-  check(to_owner_led.amount > 0 && to_owner_lem.amount > 0,
+  check(to_owner_led.amount > 0,
         "unstake amount must not be zero");
 
   eosio::transaction txn;
   txn.actions.emplace_back(
       permission_level{get_self(), "active"_n}, "led.token"_n, "transfer"_n,
       make_tuple(get_self(), owner, to_owner_led, string("unstake")));
-  if (existing_product->duration != 0) {
+  if (existing_product->has_lem_rewards == true && to_owner_lem.amount > 0) {
     txn.actions.emplace_back(
         permission_level{get_self(), "active"_n}, "led.token"_n, "transfer"_n,
         make_tuple(get_self(), owner, to_owner_lem, string("unstake")));
@@ -287,9 +289,11 @@ void lemonade::claimlem(const name &owner, const name &product_name) {
          make_tuple(get_self(), new_token, string("issue")))
       .send();
 
-  // TODO: Change to correct lem value
+  const auto secs_since_last_reward =
+      (current - existing_account->last_claim_lem_reward);
   asset to_owner_lem = asset(0, symbol("LEM", 4));
-  to_owner_lem.amount = 1;
+  to_owner_lem.amount = existing_account->balance.amount * lem_reward_rate *
+                        (secs_since_last_reward / secondsPerDay);
 
   check(to_owner_lem.amount != 0, "reward must not be zero or negative");
 

@@ -21,6 +21,8 @@ typedef uint64_t id_type;
 class [[eosio::contract("lemonade.c")]] lemonade : public contract {
 private:
   const uint64_t delay_transfer_sec = 1;
+  const double lem_reward_rate = 0.01;
+  
   const enum Status { NOT_STARTED, IS_LIVE, BETTING_FINISH, FINISHED };
 
   struct [[eosio::table]] config {
