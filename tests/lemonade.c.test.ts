@@ -334,7 +334,7 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                     errorCount += 1;
                 }
             });
-            it(`account 테이블에 생성 확인`, async () => {
+            it(`product 테이블에 생성 확인`, async () => {
                 const tableResult = await contractTester.tables.products();
                 if (debug) console.log(`Products\n${JSON.stringify(tableResult)}`);
                 const onlyCreated = tableResult[0];

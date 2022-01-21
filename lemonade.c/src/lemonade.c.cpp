@@ -129,8 +129,10 @@ void lemonade::stake(const name &owner, const asset &quantity,
     a.last_claim_lem_reward = started_at;
   });
 
-  productIdx.modify(existing_product, same_payer,
-                    [&](product &a) { a.current_amount += quantity; });
+  productIdx.modify(existing_product, same_payer, [&](product &a) {
+    a.current_amount += quantity;
+    a.buyers.push_back(owner);
+  });
 }
 
 void lemonade::unstake(const name &owner, const name &product_name) {
@@ -179,14 +181,15 @@ void lemonade::unstake(const name &owner, const name &product_name) {
   asset to_owner_lem = new_token;
 
   if (existing_product->has_lem_rewards == true) {
-    asset total_led_reward = asset(existing_account->balance.amount *
-                                   (existing_product->duration) * yield_per_sec,
-                               symbol("LED", 4));
+    asset total_led_reward =
+        asset(existing_account->balance.amount * (existing_product->duration) *
+                  yield_per_sec,
+              symbol("LED", 4));
     to_owner_led += (total_led_reward - existing_account->led_rewards);
     asset total_lem_reward = asset(
         existing_account->balance.amount *
             (existing_product->duration / secondsPerDay) * lem_reward_rate,
-        symbol("LEM",4));
+        symbol("LEM", 4));
     to_owner_lem = total_lem_reward - existing_account->lem_rewards;
 
   } else {
@@ -196,8 +199,7 @@ void lemonade::unstake(const name &owner, const name &product_name) {
 
   auto sender_id = now();
 
-  check(to_owner_led.amount > 0,
-        "unstake amount must not be zero");
+  check(to_owner_led.amount > 0, "unstake amount must not be zero");
 
   eosio::transaction txn;
   txn.actions.emplace_back(
@@ -213,6 +215,7 @@ void lemonade::unstake(const name &owner, const name &product_name) {
 
   productIdx.modify(existing_product, same_payer, [&](product &a) {
     a.current_amount -= existing_account->balance;
+    a.buyers.erase(remove(a.buyers.begin(), a.buyers.end(), owner), a.buyers.end());
   });
 
   accountIdx.erase(existing_account);

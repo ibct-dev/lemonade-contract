@@ -22,7 +22,7 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
 private:
   const uint64_t delay_transfer_sec = 1;
   const double lem_reward_rate = 0.01;
-  
+
   const enum Status { NOT_STARTED, IS_LIVE, BETTING_FINISH, FINISHED };
 
   struct [[eosio::table]] config {
@@ -44,9 +44,16 @@ private:
     double minimum_yield;
     double maximum_yield;
     bool has_lem_rewards;
+    vector<eosio::name> buyers;
 
     uint64_t primary_key() const { return id; }
     uint64_t get_name() const { return name.value; }
+    bool buyer_exists(const eosio::name owner) const {
+      return find_if(buyers.begin(), buyers.end(), [&owner](const eosio::name &p) {
+               return p == owner;
+             }) != buyers.end();
+    }
+    bool buyer_count() const { return buyers.size(); }
   };
 
   struct [[eosio::table]] account {
