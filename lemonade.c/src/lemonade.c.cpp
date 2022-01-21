@@ -75,7 +75,8 @@ void lemonade::rmproduct(const name &product_name) {
 }
 
 void lemonade::stake(const name &owner, const asset &quantity,
-                     const name &product_name, const optional<name> &betting) {
+                     const name &product_name, const optional<name> &betting,
+                     const optional<double> &base_price) {
   require_auth(owner);
 
   check(quantity.is_valid(), "invalid quantity");
@@ -110,9 +111,12 @@ void lemonade::stake(const name &owner, const asset &quantity,
   if (existing_product->duration != 0) {
     ended_at = now() + existing_product->duration;
   }
+  double base = 0;
   name status = "none"_n;
   if (betting.has_value()) {
+    check(base_price.has_value(), "must be need base price");
     status = betting.value();
+    base = base_price.value();
   }
 
   accounts_table.emplace(get_self(), [&](account &a) {
@@ -122,6 +126,7 @@ void lemonade::stake(const name &owner, const asset &quantity,
     a.current_yield = existing_product->minimum_yield;
     a.betting = status;
     a.started_at = started_at;
+    a.base_price = base;
     a.ended_at = ended_at;
     a.lem_rewards = zero_lem;
     a.led_rewards = zero_led;
@@ -205,7 +210,8 @@ void lemonade::unstake(const name &owner, const name &product_name) {
   txn.actions.emplace_back(
       permission_level{get_self(), "active"_n}, "led.token"_n, "transfer"_n,
       make_tuple(get_self(), owner, to_owner_led, string("unstake")));
-  if (existing_product->has_lem_rewards == true && to_owner_lem.amount > 0) {
+  if (existing_product->has_lem_rewards == true) {
+    check(to_owner_lem.amount > 0, "unstake amount must not be zero");
     txn.actions.emplace_back(
         permission_level{get_self(), "active"_n}, "led.token"_n, "transfer"_n,
         make_tuple(get_self(), owner, to_owner_lem, string("unstake")));
@@ -215,7 +221,8 @@ void lemonade::unstake(const name &owner, const name &product_name) {
 
   productIdx.modify(existing_product, same_payer, [&](product &a) {
     a.current_amount -= existing_account->balance;
-    a.buyers.erase(remove(a.buyers.begin(), a.buyers.end(), owner), a.buyers.end());
+    a.buyers.erase(remove(a.buyers.begin(), a.buyers.end(), owner),
+                   a.buyers.end());
   });
 
   accountIdx.erase(existing_account);
@@ -394,10 +401,7 @@ void lemonade::setbet(const uint64_t bet_id, const uint8_t &status,
           "when you change status to live, you must give base_price");
   }
 
-  double base = existing_betting->base_price;
-  if (status == Status::IS_LIVE && base_price.has_value()) {
-    base = base_price.value();
-  }
+  double base = base_price.value();
 
   bettings_table.modify(existing_betting, same_payer, [&](betting &a) {
     a.status = status;
@@ -519,8 +523,14 @@ void lemonade::transfer_event(const name &from, const name &to,
     return;
 
   vector<string> event = memoParser(memo);
-  if (event[0] == "staking") {
-    stake(from, quantity, name(event[1]), name(event[2]));
+  double base = 0;
+  name position = name("none");
+  if (event[0] == "stake") {
+    if(event.size() >= 4){
+      position = name(event[2]);
+      base = stod(event[3]);
+    }
+    stake(from, quantity, name(event[1]), position, base);
   }
   if (event[0] == "bet") {
     uint64_t bet_id = stoull(event[1]);

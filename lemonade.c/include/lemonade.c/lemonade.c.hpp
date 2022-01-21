@@ -49,9 +49,9 @@ private:
     uint64_t primary_key() const { return id; }
     uint64_t get_name() const { return name.value; }
     bool buyer_exists(const eosio::name owner) const {
-      return find_if(buyers.begin(), buyers.end(), [&owner](const eosio::name &p) {
-               return p == owner;
-             }) != buyers.end();
+      return find_if(buyers.begin(), buyers.end(),
+                     [&owner](const eosio::name &p) { return p == owner; }) !=
+             buyers.end();
     }
     bool buyer_count() const { return buyers.size(); }
   };
@@ -62,6 +62,7 @@ private:
     id_type product_id;
     double current_yield;
     name betting;
+    double base_price;
     uint32_t started_at; // (uint32_t)
                          // (eosio::current_time_point().sec_since_epoch());
     uint32_t
@@ -127,7 +128,7 @@ private:
   uint32_t now();
   vector<string> memoParser(const string &memo);
   void stake(const name &owner, const asset &quantity, const name &product_name,
-             const optional<name> &betting);
+             const optional<name> &betting, const optional<double> &base_price);
   void bet(const name &owner, const asset &quantity, const uint64_t &bet_id,
            const string &position);
 
