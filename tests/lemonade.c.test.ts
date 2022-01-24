@@ -1160,7 +1160,7 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                 const tableResult = await contractTester.tables.bettings();
                 if (debug) console.log(`Bettings\n${JSON.stringify(tableResult)}`);
                 const onlyCreated = tableResult[0];
-                expect(onlyCreated).to.deep.include({ status: 3 });
+                expect(onlyCreated).to.deep.include({ status: 4 });
             });
             it(`${user} 계정 잔액 확인`, async () => {
                 const balance = await bc.rpc.get_currency_balance('led.token', user, 'LED');

@@ -305,7 +305,7 @@ void lemonade::claimlem(const name &owner, const name &product_name) {
   to_owner_lem.amount = existing_account->balance.amount * lem_reward_rate *
                         (secs_since_last_reward / secondsPerDay);
 
-  check(to_owner_lem.amount != 0, "reward must not be zero or negative");
+  check(to_owner_lem.amount > 0, "reward must not be zero or negative");
 
   action(permission_level{get_self(), "active"_n}, "led.token"_n, "transfer"_n,
          make_tuple(get_self(), owner, to_owner_lem, string("claim lem")))
