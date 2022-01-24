@@ -23,7 +23,7 @@ private:
   const uint64_t delay_transfer_sec = 1;
   const double lem_reward_rate = 0.01;
 
-  const enum Status { NOT_STARTED, IS_LIVE, BETTING_FINISH, FINISHED };
+  const enum Status { NOT_STARTED, IS_LIVE, BETTING_FINISH, NOT_CLAIMED, FINISHED };
 
   struct [[eosio::table]] config {
     id_type id;

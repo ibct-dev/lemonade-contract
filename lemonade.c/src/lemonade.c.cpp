@@ -375,9 +375,7 @@ void lemonade::rmbet(const uint64_t bet_id) {
   auto existing_betting = bettings_table.find(bet_id);
   check(existing_betting != bettings_table.end(), "game does not exist");
 
-  check(existing_betting->short_betters.size() == 0 &&
-            existing_betting->long_betters.size() == 0,
-        "betters are exists");
+  check(existing_betting->status == Status::FINISHED, "game not finished");
 
   bettings_table.erase(existing_betting);
 }
@@ -399,14 +397,29 @@ void lemonade::setbet(const uint64_t bet_id, const uint8_t &status,
           "the start time has not passed.");
     check(base_price.has_value(),
           "when you change status to live, you must give base_price");
+
+    double base = base_price.value();
+
+    bettings_table.modify(existing_betting, same_payer, [&](betting &a) {
+      a.status = status;
+      a.base_price = base;
+    });
   }
-
-  double base = base_price.value();
-
-  bettings_table.modify(existing_betting, same_payer, [&](betting &a) {
-    a.status = status;
-    a.base_price = base;
-  });
+  if (status == Status::BETTING_FINISH) {
+    check(existing_betting->get_status() == Status::IS_LIVE,
+          "game status has wrong value");
+    check(existing_betting->betting_ended_at <= now(),
+          "the betting end time has not passed.");
+    bettings_table.modify(existing_betting, same_payer,
+                          [&](betting &a) { a.status = status; });
+  }
+  if (status == Status::NOT_CLAIMED) {
+    check(existing_betting->get_status() == Status::BETTING_FINISH,
+          "game status has wrong value");
+    check(existing_betting->ended_at <= now(), "the end time has not passed.");
+    bettings_table.modify(existing_betting, same_payer,
+                          [&](betting &a) { a.status = status; });
+  }
 }
 
 void lemonade::bet(const name &owner, const asset &quantity,
@@ -526,7 +539,7 @@ void lemonade::transfer_event(const name &from, const name &to,
   double base = 0;
   name position = name("none");
   if (event[0] == "stake") {
-    if(event.size() >= 4){
+    if (event.size() >= 4) {
       position = name(event[2]);
       base = stod(event[3]);
     }
