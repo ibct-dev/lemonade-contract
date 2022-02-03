@@ -23,7 +23,13 @@ private:
   const uint64_t delay_transfer_sec = 1;
   const double lem_reward_rate = 0.01;
 
-  const enum Status { NOT_STARTED, IS_LIVE, BETTING_FINISH, NOT_CLAIMED, FINISHED };
+  const enum Status {
+    NOT_STARTED,
+    IS_LIVE,
+    BETTING_FINISH,
+    NOT_CLAIMED,
+    FINISHED
+  };
 
   struct [[eosio::table]] config {
     id_type id;
@@ -145,6 +151,13 @@ public:
   using contract::contract;
   lemonade(name receiver, name code, datastream<const char *> ds)
       : contract(receiver, code, ds) {}
+
+  [[eosio::action]] void clearbetting() {
+    require_auth(get_self());
+    printl("cleaning", 8);
+
+    cleanTable<bettings>(get_self(), get_self().value);
+  }
 
   [[eosio::action]] void init();
 
