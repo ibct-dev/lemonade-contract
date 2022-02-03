@@ -364,6 +364,7 @@ void lemonade::createbet(const uint32_t &started_at,
     a.betting_ended_at = betting_ended_at;
     a.ended_at = ended_at;
     a.base_price = 0;
+    a.final_price = 0;
     a.status = Status::NOT_STARTED;
   });
 }
@@ -381,7 +382,8 @@ void lemonade::rmbet(const uint64_t bet_id) {
 }
 
 void lemonade::setbet(const uint64_t bet_id, const uint8_t &status,
-                      const optional<double> &base_price) {
+                      const optional<double> &base_price,
+                      const optional<double> &final_price) {
   require_auth(get_self());
 
   bettings bettings_table(get_self(), get_self().value);
@@ -410,8 +412,15 @@ void lemonade::setbet(const uint64_t bet_id, const uint8_t &status,
           "game status has wrong value");
     check(existing_betting->betting_ended_at <= now(),
           "the betting end time has not passed.");
-    bettings_table.modify(existing_betting, same_payer,
-                          [&](betting &a) { a.status = status; });
+    check(final_price.has_value(),
+          "when you change status to live, you must give final_price");
+
+    double finalPrice = final_price.value();
+
+    bettings_table.modify(existing_betting, same_payer, [&](betting &a) {
+      a.status = status;
+      a.final_price = finalPrice;
+    });
   }
   if (status == Status::NOT_CLAIMED) {
     check(existing_betting->get_status() == Status::BETTING_FINISH,
@@ -485,21 +494,25 @@ void lemonade::bet(const name &owner, const asset &quantity,
   }
 }
 
-void lemonade::claimbet(const uint64_t &bet_id, const string &win_position) {
+void lemonade::claimbet(const uint64_t &bet_id) {
   require_auth(get_self());
 
   bettings bettings_table(get_self(), get_self().value);
   auto existing_betting = bettings_table.find(bet_id);
   check(existing_betting != bettings_table.end(), "game does not exist");
 
-  check(win_position == "long" || win_position == "short",
-        "must choose long or short position");
-
   check(existing_betting->get_status() == Status::IS_LIVE, "game is not lived");
   check(existing_betting->ended_at <= now(), "betting is not over");
 
   vector<pair<name, asset>> winners;
   double dividend;
+  string win_position =
+      existing_betting->base_price > existing_betting->final_price ? "short"
+                                                                   : "long";
+
+  if (existing_betting->base_price == existing_betting->final_price) {
+    win_position = "none";
+  }
 
   if (win_position == "long") {
     winners = existing_betting->long_betters;

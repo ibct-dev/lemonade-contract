@@ -85,6 +85,7 @@ private:
   struct [[eosio::table]] betting {
     id_type id;
     double base_price;
+    double final_price;
     vector<pair<name, asset>> short_betters;
     vector<pair<name, asset>> long_betters;
     asset short_betting_amount;
@@ -185,12 +186,12 @@ public:
                                    const uint32_t &ended_at);
 
   [[eosio::action]] void setbet(const uint64_t bet_id, const uint8_t &status,
-                                const optional<double> &base_price);
+                                const optional<double> &base_price,
+                                const optional<double> &final_price);
 
   [[eosio::action]] void rmbet(const uint64_t bet_id);
 
-  [[eosio::action]] void claimbet(const uint64_t &bet_id,
-                                  const string &win_position);
+  [[eosio::action]] void claimbet(const uint64_t &bet_id);
 
   [[eosio::on_notify("*::transfer")]] void transfer_event(
       const name &from, const name &to, const asset &quantity,
