@@ -412,6 +412,14 @@ void lemonade::setbet(const uint64_t bet_id, const uint8_t &status,
           "game status has wrong value");
     check(existing_betting->betting_ended_at <= now(),
           "the betting end time has not passed.");
+
+    bettings_table.modify(existing_betting, same_payer,
+                          [&](betting &a) { a.status = status; });
+  }
+  if (status == Status::NOT_CLAIMED) {
+    check(existing_betting->get_status() == Status::BETTING_FINISH,
+          "game status has wrong value");
+    check(existing_betting->ended_at <= now(), "the end time has not passed.");
     check(final_price.has_value(),
           "when you change status to live, you must give final_price");
 
@@ -421,13 +429,6 @@ void lemonade::setbet(const uint64_t bet_id, const uint8_t &status,
       a.status = status;
       a.final_price = finalPrice;
     });
-  }
-  if (status == Status::NOT_CLAIMED) {
-    check(existing_betting->get_status() == Status::BETTING_FINISH,
-          "game status has wrong value");
-    check(existing_betting->ended_at <= now(), "the end time has not passed.");
-    bettings_table.modify(existing_betting, same_payer,
-                          [&](betting &a) { a.status = status; });
   }
 }
 
