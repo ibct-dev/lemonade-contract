@@ -157,11 +157,28 @@ void lemonade::unstake(const name &owner, const name &product_name) {
       (current - existing_config->last_half_life_updated);
 
   auto half_life = existing_config->half_life_count;
+
+  asset new_token;
+  const auto latest_half_life =
+      (existing_config->last_half_life_updated + secondsPerYear * 2);
+
   if (secs_since_last_half_life_updated >= secondsPerYear * 2) {
+    const auto secs_since_last_fill_to_latest_half_life =
+        (latest_half_life - existing_config->last_lem_bucket_fill);
+    const auto secs_since_latest_half_life = (current - latest_half_life);
+
+    asset before_half_life = asset(secs_since_last_fill_to_latest_half_life *
+                                       2 * 1'0000 / (2 * half_life),
+                                   symbol("LEM", 4));
     half_life++;
+
+    asset after_half_life =
+        asset(secs_since_latest_half_life * 2 * 1'0000 / (2 * half_life),
+              symbol("LEM", 4));
+  } else {
+    new_token = asset(secs_since_last_fill * 2 * 1'0000 / (2 * half_life),
+                      symbol("LEM", 4));
   }
-  asset new_token = asset(secs_since_last_fill * 2 * 1'0000 / (2 * half_life),
-                          symbol("LEM", 4));
 
   action(permission_level{get_self(), "active"_n}, "led.token"_n, "issue"_n,
          make_tuple(get_self(), new_token, string("issue")))
@@ -169,6 +186,7 @@ void lemonade::unstake(const name &owner, const name &product_name) {
 
   config_table.modify(existing_config, same_payer, [&](config &a) {
     a.last_lem_bucket_fill = current;
+    a.last_half_life_updated = now();
     a.half_life_count = half_life;
   });
 
@@ -203,10 +221,29 @@ void lemonade::unstake(const name &owner, const name &product_name) {
                   yield_per_sec,
               symbol("LED", 4));
     to_owner_led += (total_led_reward - existing_account->led_rewards);
-    asset total_lem_reward = asset(
-        existing_account->balance.amount *
-            (existing_product->duration / secondsPerDay) * lem_reward_rate,
-        symbol("LEM", 4));
+
+    asset total_lem_reward;
+    if (latest_half_life >= existing_account->started_at &&
+        latest_half_life <= existing_account->ended_at) {
+      asset before_half_life = asset(
+          existing_account->balance.amount *
+              (latest_half_life - existing_account->started_at) /
+              secondsPerDay * lem_reward_rate / (2 * (half_life - 1)),
+          symbol("LEM", 4));
+
+      asset after_half_life =
+          asset(existing_account->balance.amount *
+                    (existing_account->ended_at - latest_half_life) / secondsPerDay *
+                    lem_reward_rate / (2 * half_life),
+                symbol("LEM", 4));
+      total_lem_reward = before_half_life + after_half_life;
+    } else {
+      total_lem_reward = asset(
+          existing_account->balance.amount *
+              (existing_product->duration / secondsPerDay) * lem_reward_rate,
+          symbol("LEM", 4));
+    }
+
     to_owner_lem = total_lem_reward - existing_account->lem_rewards;
 
   } else {
@@ -301,41 +338,72 @@ void lemonade::claimlem(const name &owner, const name &product_name) {
         "there are no LEM rewards for this product ");
 
   auto current = now();
-  auto rewards_end_time =
-      now() >= existing_account->ended_at ? existing_account->ended_at : now();
-  const auto secs_since_last_fill =
-      (current - existing_config->last_lem_bucket_fill);
+  auto secs_since_last_fill = (current - existing_config->last_lem_bucket_fill);
+
+  auto secs_since_last_half_life_updated =
+      (current - existing_config->last_half_life_updated);
 
   auto half_life = existing_config->half_life_count;
-  const auto secs_since_last_half_life_updated =
-      (current - existing_config->last_half_life_updated);
-  if (secs_since_last_half_life_updated >= secondsPerYear * 2) {
-    half_life++;
-  }
 
-  asset new_token = asset(secs_since_last_fill * 2 * 1'0000 / (2 * half_life),
-                          symbol("LEM", 4));
+  asset new_token;
+  const auto latest_half_life =
+      (existing_config->last_half_life_updated + secondsPerYear * 2);
+
+  if (secs_since_last_half_life_updated >= secondsPerYear * 2) {
+    const auto secs_since_last_fill_to_latest_half_life =
+        (latest_half_life - existing_config->last_lem_bucket_fill);
+    const auto secs_since_latest_half_life = (current - latest_half_life);
+
+    asset before_half_life = asset(secs_since_last_fill_to_latest_half_life *
+                                       2 * 1'0000 / (2 * half_life),
+                                   symbol("LEM", 4));
+    half_life++;
+
+    asset after_half_life =
+        asset(secs_since_latest_half_life * 2 * 1'0000 / (2 * half_life),
+              symbol("LEM", 4));
+    new_token = before_half_life + after_half_life;
+  } else {
+    new_token = asset(secs_since_last_fill * 2 * 1'0000 / (2 * half_life),
+                      symbol("LEM", 4));
+  }
 
   action(permission_level{get_self(), "active"_n}, "led.token"_n, "issue"_n,
          make_tuple(get_self(), new_token, string("issue")))
       .send();
 
-  config_table.modify(existing_config, same_payer, [&](config &a) {
-    a.last_lem_bucket_fill = now();
-    a.half_life_count = half_life;
-  });
+  auto rewards_end_time =
+      now() >= existing_account->ended_at ? existing_account->ended_at : now();
 
-  const auto secs_since_last_reward =
-      (rewards_end_time - existing_account->last_claim_lem_reward);
-  asset to_owner_lem = asset(0, symbol("LEM", 4));
-  to_owner_lem.amount = existing_account->balance.amount * lem_reward_rate *
-                        (secs_since_last_reward / secondsPerDay);
+  asset to_owner_lem;
+
+  if (rewards_end_time >= latest_half_life &&
+      existing_account->last_claim_lem_reward <= latest_half_life) {
+    asset before_half_life =
+        asset(existing_account->balance.amount *
+                  (latest_half_life - existing_account->last_claim_lem_reward) /
+                  secondsPerDay * lem_reward_rate / (2 * (half_life - 1)),
+              symbol("LEM", 4));
+
+    asset after_half_life =
+        asset(existing_account->balance.amount *
+                  (rewards_end_time - latest_half_life) / secondsPerDay *
+                  lem_reward_rate / (2 * half_life),
+              symbol("LEM", 4));
+    to_owner_lem = before_half_life + after_half_life;
+  }
 
   check(to_owner_lem.amount > 0, "reward must not be zero or negative");
 
   action(permission_level{get_self(), "active"_n}, "led.token"_n, "transfer"_n,
          make_tuple(get_self(), owner, to_owner_lem, string("claim lem")))
       .send();
+
+  config_table.modify(existing_config, same_payer, [&](config &a) {
+    a.last_lem_bucket_fill = now();
+    a.last_half_life_updated = now();
+    a.half_life_count = half_life;
+  });
 
   accountIdx.modify(existing_account, same_payer, [&](account &a) {
     a.last_claim_lem_reward = rewards_end_time;
