@@ -999,7 +999,8 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                         {
                             bet_id:0,
                             status:1,
-                            base_price: 1.0
+                            base_price: 1.0,
+                            final_price: null
                         },
                         [
                             {
@@ -1021,7 +1022,8 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                         {
                             bet_id:1,
                             status:1,
-                            base_price: 1.0
+                            base_price: 1.0,
+                            final_price: null
                         },
                         [
                             {
@@ -1043,7 +1045,8 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                         {
                             bet_id:0,
                             status: 1,
-                            base_price: 1.0
+                            base_price: 1.0,
+                            final_price: null
                         },
                         [
                             {

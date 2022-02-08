@@ -10,6 +10,8 @@ void lemonade::init() {
       a.id = config_table.available_primary_key();
       a.is_active = true;
       a.last_lem_bucket_fill = now();
+      a.last_half_life_updated = now();
+      a.half_life_count = 1;
     });
   }
 }
@@ -151,14 +153,24 @@ void lemonade::unstake(const name &owner, const name &product_name) {
   const auto secs_since_last_fill =
       (current - existing_config->last_lem_bucket_fill);
 
-  config_table.modify(existing_config, same_payer,
-                      [&](config &a) { a.last_lem_bucket_fill = current; });
+  const auto secs_since_last_half_life_updated =
+      (current - existing_config->last_half_life_updated);
 
-  asset new_token = asset(secs_since_last_fill * 2 * 10000, symbol("LEM", 4));
+  auto half_life = existing_config->half_life_count;
+  if (secs_since_last_half_life_updated >= secondsPerYear * 2) {
+    half_life++;
+  }
+  asset new_token = asset(secs_since_last_fill * 2 * 1'0000 / (2 * half_life),
+                          symbol("LEM", 4));
 
   action(permission_level{get_self(), "active"_n}, "led.token"_n, "issue"_n,
          make_tuple(get_self(), new_token, string("issue")))
       .send();
+
+  config_table.modify(existing_config, same_payer, [&](config &a) {
+    a.last_lem_bucket_fill = current;
+    a.half_life_count = half_life;
+  });
 
   products products_table(get_self(), get_self().value);
   auto productIdx = products_table.get_index<eosio::name("byname")>();
@@ -288,19 +300,33 @@ void lemonade::claimlem(const name &owner, const name &product_name) {
   check(existing_product->has_lem_rewards,
         "there are no LEM rewards for this product ");
 
-  auto current =
+  auto current = now();
+  auto rewards_end_time =
       now() >= existing_account->ended_at ? existing_account->ended_at : now();
   const auto secs_since_last_fill =
       (current - existing_config->last_lem_bucket_fill);
 
-  asset new_token = asset(secs_since_last_fill * 2 * 10000, symbol("LEM", 4));
+  auto half_life = existing_config->half_life_count;
+  const auto secs_since_last_half_life_updated =
+      (current - existing_config->last_half_life_updated);
+  if (secs_since_last_half_life_updated >= secondsPerYear * 2) {
+    half_life++;
+  }
+
+  asset new_token = asset(secs_since_last_fill * 2 * 1'0000 / (2 * half_life),
+                          symbol("LEM", 4));
 
   action(permission_level{get_self(), "active"_n}, "led.token"_n, "issue"_n,
          make_tuple(get_self(), new_token, string("issue")))
       .send();
 
+  config_table.modify(existing_config, same_payer, [&](config &a) {
+    a.last_lem_bucket_fill = now();
+    a.half_life_count = half_life;
+  });
+
   const auto secs_since_last_reward =
-      (current - existing_account->last_claim_lem_reward);
+      (rewards_end_time - existing_account->last_claim_lem_reward);
   asset to_owner_lem = asset(0, symbol("LEM", 4));
   to_owner_lem.amount = existing_account->balance.amount * lem_reward_rate *
                         (secs_since_last_reward / secondsPerDay);
@@ -312,7 +338,7 @@ void lemonade::claimlem(const name &owner, const name &product_name) {
       .send();
 
   accountIdx.modify(existing_account, same_payer, [&](account &a) {
-    a.last_claim_lem_reward = current;
+    a.last_claim_lem_reward = rewards_end_time;
     a.lem_rewards += to_owner_lem;
   });
 }

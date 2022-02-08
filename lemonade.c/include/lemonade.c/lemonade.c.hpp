@@ -35,6 +35,8 @@ private:
     id_type id;
     bool is_active;
     uint32_t last_lem_bucket_fill;
+    uint32_t last_half_life_updated;
+    uint32_t half_life_count;
 
     uint64_t primary_key() const { return id; }
   };
@@ -158,6 +160,13 @@ public:
     printl("cleaning", 8);
 
     cleanTable<bettings>(get_self(), get_self().value);
+  }
+
+  [[eosio::action]] void clearconfig() {
+    require_auth(get_self());
+    printl("cleaning", 8);
+
+    cleanTable<configs>(get_self(), get_self().value);
   }
 
   [[eosio::action]] void init();
