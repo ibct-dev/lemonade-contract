@@ -77,7 +77,7 @@ void lemonade::rmproduct(const name &product_name) {
 }
 
 void lemonade::stake(const name &owner, const asset &quantity,
-                     const name &product_name, const optional<name> &betting,
+                     const name &product_name, const optional<name> &price_prediction,
                      const optional<double> &base_price) {
   require_auth(owner);
 
@@ -114,10 +114,10 @@ void lemonade::stake(const name &owner, const asset &quantity,
     ended_at = now() + existing_product->duration;
   }
   double base = 0;
-  name status = "none"_n;
-  if (betting.has_value()) {
+  name prediction = "none"_n;
+  if (price_prediction.has_value()) {
     check(base_price.has_value(), "must be need base price");
-    status = betting.value();
+    prediction = price_prediction.value();
     base = base_price.value();
   }
 
@@ -126,7 +126,7 @@ void lemonade::stake(const name &owner, const asset &quantity,
     a.balance = quantity;
     a.product_id = existing_product->id;
     a.current_yield = existing_product->minimum_yield;
-    a.betting = status;
+    a.price_prediction = prediction;
     a.started_at = started_at;
     a.base_price = base;
     a.ended_at = ended_at;

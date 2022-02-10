@@ -69,7 +69,7 @@ private:
     asset balance;
     id_type product_id;
     double current_yield;
-    name betting;
+    name price_prediction;
     double base_price;
     uint32_t started_at; // (uint32_t)
                          // (eosio::current_time_point().sec_since_epoch());
@@ -137,7 +137,7 @@ private:
   uint32_t now();
   vector<string> memoParser(const string &memo);
   void stake(const name &owner, const asset &quantity, const name &product_name,
-             const optional<name> &betting, const optional<double> &base_price);
+             const optional<name> &price_prediction, const optional<double> &base_price);
   void bet(const name &owner, const asset &quantity, const uint64_t &bet_id,
            const string &position);
 
