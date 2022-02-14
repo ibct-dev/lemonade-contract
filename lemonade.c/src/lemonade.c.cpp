@@ -596,7 +596,7 @@ void lemonade::claimbet(const uint64_t &bet_id) {
   auto existing_betting = bettings_table.find(bet_id);
   check(existing_betting != bettings_table.end(), "game does not exist");
 
-  check(existing_betting->get_status() == Status::IS_LIVE, "game is not lived");
+  check(existing_betting->get_status() == Status::NOT_CLAIMED, "game is not finished");
   check(existing_betting->ended_at <= now(), "betting is not over");
 
   vector<pair<name, asset>> winners;
