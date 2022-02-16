@@ -77,7 +77,8 @@ void lemonade::rmproduct(const name &product_name) {
 }
 
 void lemonade::stake(const name &owner, const asset &quantity,
-                     const name &product_name, const optional<name> &price_prediction,
+                     const name &product_name,
+                     const optional<name> &price_prediction,
                      const optional<double> &base_price) {
   require_auth(owner);
 
@@ -225,16 +226,16 @@ void lemonade::unstake(const name &owner, const name &product_name) {
     asset total_lem_reward;
     if (latest_half_life >= existing_account->started_at &&
         latest_half_life <= existing_account->ended_at) {
-      asset before_half_life = asset(
-          existing_account->balance.amount *
-              (latest_half_life - existing_account->started_at) /
-              secondsPerDay * lem_reward_rate / (2 * (half_life - 1)),
-          symbol("LEM", 4));
+      asset before_half_life =
+          asset(existing_account->balance.amount *
+                    (latest_half_life - existing_account->started_at) /
+                    secondsPerDay * lem_reward_rate / (2 * (half_life - 1)),
+                symbol("LEM", 4));
 
       asset after_half_life =
           asset(existing_account->balance.amount *
-                    (existing_account->ended_at - latest_half_life) / secondsPerDay *
-                    lem_reward_rate / (2 * half_life),
+                    (existing_account->ended_at - latest_half_life) /
+                    secondsPerDay * lem_reward_rate / (2 * half_life),
                 symbol("LEM", 4));
       total_lem_reward = before_half_life + after_half_life;
     } else {
@@ -596,38 +597,67 @@ void lemonade::claimbet(const uint64_t &bet_id) {
   auto existing_betting = bettings_table.find(bet_id);
   check(existing_betting != bettings_table.end(), "game does not exist");
 
-  check(existing_betting->get_status() == Status::NOT_CLAIMED, "game is not finished");
+  check(existing_betting->get_status() == Status::NOT_CLAIMED,
+        "game is not finished");
   check(existing_betting->ended_at <= now(), "betting is not over");
 
-  vector<pair<name, asset>> winners;
-  double dividend;
-  string win_position =
-      existing_betting->base_price > existing_betting->final_price ? "short"
-                                                                   : "long";
-
-  if (existing_betting->base_price == existing_betting->final_price) {
-    win_position = "none";
-  }
-
-  if (win_position == "long") {
-    winners = existing_betting->long_betters;
-    dividend = existing_betting->long_dividend;
-  }
-  if (win_position == "short") {
-    winners = existing_betting->short_betters;
-    dividend = existing_betting->short_dividend;
-  }
-
-  for (auto k : winners) {
-    const asset price = asset(k.second.amount * dividend, k.second.symbol);
-    if (price.amount == 0) {
-      continue;
+  // Betting one side only -> refund them all
+  if (existing_betting->long_betters.size() == 0 ||
+      existing_betting->short_betters.size() == 0) {
+    if (existing_betting->long_betters.size() == 0) {
+      for (auto k : existing_betting->long_betters) {
+        action(permission_level{get_self(), "active"_n}, "led.token"_n,
+               "transfer"_n,
+               make_tuple(get_self(), k.first, k.second,
+                          string("refund ") + to_string(bet_id) +
+                              string("game, game not started")))
+            .send();
+      }
     }
-    action(
-        permission_level{get_self(), "active"_n}, "led.token"_n, "transfer"_n,
-        make_tuple(get_self(), k.first, price,
-                   string("winner of ") + to_string(bet_id) + string("game!")))
-        .send();
+    if (existing_betting->short_betters.size() == 0) {
+      for (auto k : existing_betting->short_betters) {
+        action(permission_level{get_self(), "active"_n}, "led.token"_n,
+               "transfer"_n,
+               make_tuple(get_self(), k.first, k.second,
+                          string("refund ") + to_string(bet_id) +
+                              string("game, game not started")))
+            .send();
+      }
+    }
+  }
+  // Betting both side -> claim for winner
+  else {
+    vector<pair<name, asset>> winners;
+    double dividend;
+    string win_position =
+        existing_betting->base_price > existing_betting->final_price ? "short"
+                                                                     : "long";
+
+    if (existing_betting->base_price == existing_betting->final_price) {
+      win_position = "none";
+    }
+
+    if (win_position == "long") {
+      winners = existing_betting->long_betters;
+      dividend = existing_betting->long_dividend;
+    }
+    if (win_position == "short") {
+      winners = existing_betting->short_betters;
+      dividend = existing_betting->short_dividend;
+    }
+
+    for (auto k : winners) {
+      const asset price = asset(k.second.amount * dividend, k.second.symbol);
+      if (price.amount == 0) {
+        continue;
+      }
+      action(permission_level{get_self(), "active"_n}, "led.token"_n,
+             "transfer"_n,
+             make_tuple(get_self(), k.first, price,
+                        string("winner of ") + to_string(bet_id) +
+                            string("game!")))
+          .send();
+    }
   }
 
   bettings_table.modify(existing_betting, same_payer,
