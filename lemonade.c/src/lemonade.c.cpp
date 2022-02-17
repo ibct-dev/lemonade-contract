@@ -19,6 +19,7 @@ void lemonade::init() {
 void lemonade::addproduct(const name &product_name, const double &minimum_yield,
                           const double &maximum_yield,
                           const bool &has_lem_rewards,
+                          const bool &has_prediction,
                           const asset &amount_per_account,
                           const optional<asset> &maximum_amount_limit,
                           const optional<uint32_t> &duration) {
@@ -59,6 +60,7 @@ void lemonade::addproduct(const name &product_name, const double &minimum_yield,
     a.minimum_yield = minimum_yield;
     a.maximum_yield = maximum_yield;
     a.has_lem_rewards = has_lem_rewards;
+    a.has_prediction = has_prediction;
   });
 }
 
@@ -117,6 +119,7 @@ void lemonade::stake(const name &owner, const asset &quantity,
   double base = 0;
   name prediction = "none"_n;
   if (price_prediction.has_value()) {
+    check(existing_product->has_prediction, "Product doesn't accept price prediction");
     check(base_price.has_value(), "must be need base price");
     prediction = price_prediction.value();
     base = base_price.value();

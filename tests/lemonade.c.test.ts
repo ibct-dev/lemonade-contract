@@ -310,6 +310,7 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                         {
                             product_name: "normal",
                             has_lem_rewards: false,
+                            has_prediction: false,
                             minimum_yield: 1.18, // 18% per year
                             maximum_yield: 1.18, 
                             amount_per_account: "0.0000 LED", 
@@ -346,6 +347,7 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                     const actionResult = await contractTester.actions.addproduct(
                         {
                             product_name: "dummy",
+                            has_prediction: false,
                             has_lem_rewards: false,
                             minimum_yield: 1.99,
                             maximum_yield: 1.99, 
@@ -383,6 +385,7 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                     const actionResult = await contractTester.actions.addproduct(
                         {
                             product_name: "fixed",
+                            has_prediction: true,
                             has_lem_rewards: true,
                             minimum_yield: 1.18,
                             maximum_yield: 1.71, 

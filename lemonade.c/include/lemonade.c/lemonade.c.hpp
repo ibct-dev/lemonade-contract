@@ -52,6 +52,7 @@ private:
     double minimum_yield;
     double maximum_yield;
     bool has_lem_rewards;
+    bool has_prediction;
     vector<eosio::name> buyers;
 
     uint64_t primary_key() const { return id; }
@@ -137,7 +138,8 @@ private:
   uint32_t now();
   vector<string> memoParser(const string &memo);
   void stake(const name &owner, const asset &quantity, const name &product_name,
-             const optional<name> &price_prediction, const optional<double> &base_price);
+             const optional<name> &price_prediction,
+             const optional<double> &base_price);
   void bet(const name &owner, const asset &quantity, const uint64_t &bet_id,
            const string &position);
 
@@ -154,6 +156,13 @@ public:
   using contract::contract;
   lemonade(name receiver, name code, datastream<const char *> ds)
       : contract(receiver, code, ds) {}
+
+  [[eosio::action]] void clearproduct() {
+    require_auth(get_self());
+    printl("cleaning", 8);
+
+    cleanTable<products>(get_self(), get_self().value);
+  }
 
   [[eosio::action]] void clearbetting() {
     require_auth(get_self());
@@ -174,7 +183,7 @@ public:
   [[eosio::action]] void addproduct(
       const name &product_name, const double &minimum_yield,
       const double &maximum_yield, const bool &has_lem_rewards,
-      const asset &amount_per_account,
+      const bool &has_prediction, const asset &amount_per_account,
       const optional<asset> &maximum_amount_limit,
       const optional<uint32_t> &duration);
 
