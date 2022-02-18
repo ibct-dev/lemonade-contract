@@ -22,10 +22,9 @@ void lemonade::setbtcprice(const double &price) {
 
   configs config_table(get_self(), get_self().value);
   auto existing_config = config_table.find(0);
-  if (existing_config == config_table.end()) {
-    config_table.modify(existing_config, same_payer,
-                        [&](config &a) { a.btc_price = price; });
-  }
+  check(existing_config != config_table.end(), "contract not initialized");
+  config_table.modify(existing_config, same_payer,
+                      [&](config &a) { a.btc_price = price; });
 }
 
 void lemonade::addproduct(const name &product_name, const double &minimum_yield,
@@ -243,8 +242,7 @@ void lemonade::unstake(const name &owner, const name &product_name) {
 
   const auto secs_since_last_led_reward =
       (current - existing_account->last_claim_led_reward);
-  const auto yield_per_sec =
-      (yield - 1) / secondsPerYear;
+  const auto yield_per_sec = (yield - 1) / secondsPerYear;
   asset to_owner_led = existing_account->balance;
   asset to_owner_lem = new_token;
 
