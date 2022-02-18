@@ -118,7 +118,7 @@ void lemonade::stake(const name &owner, const asset &quantity,
   }
   double base = 0;
   name prediction = "none"_n;
-  if (price_prediction.has_value()) {
+  if (price_prediction.has_value() && price_prediction.value() != "none"_n) {
     check(existing_product->has_prediction, "Product doesn't accept price prediction");
     check(base_price.has_value(), "must be need base price");
     prediction = price_prediction.value();
