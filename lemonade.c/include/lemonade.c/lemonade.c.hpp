@@ -37,6 +37,7 @@ private:
     uint32_t last_lem_bucket_fill;
     uint32_t last_half_life_updated;
     uint32_t half_life_count;
+    double btc_price;
 
     uint64_t primary_key() const { return id; }
   };
@@ -138,8 +139,7 @@ private:
   uint32_t now();
   vector<string> memoParser(const string &memo);
   void stake(const name &owner, const asset &quantity, const name &product_name,
-             const optional<name> &price_prediction,
-             const optional<double> &base_price);
+             const optional<name> &price_prediction);
   void bet(const name &owner, const asset &quantity, const uint64_t &bet_id,
            const string &position);
 
@@ -157,28 +157,37 @@ public:
   lemonade(name receiver, name code, datastream<const char *> ds)
       : contract(receiver, code, ds) {}
 
-  [[eosio::action]] void clearproduct() {
-    require_auth(get_self());
-    printl("cleaning", 8);
+  // [[eosio::action]] void clearproduct() {
+  //   require_auth(get_self());
+  //   printl("cleaning", 8);
 
-    cleanTable<products>(get_self(), get_self().value);
-  }
+  //   cleanTable<products>(get_self(), get_self().value);
+  // }
 
-  [[eosio::action]] void clearbetting() {
-    require_auth(get_self());
-    printl("cleaning", 8);
+  // [[eosio::action]] void clearaccount(name account) {
+  //   require_auth(get_self());
+  //   printl("cleaning", 8);
 
-    cleanTable<bettings>(get_self(), get_self().value);
-  }
+  //   cleanTable<accounts>(get_self(), account.value);
+  // }
 
-  [[eosio::action]] void clearconfig() {
-    require_auth(get_self());
-    printl("cleaning", 8);
+  // [[eosio::action]] void clearbetting() {
+  //   require_auth(get_self());
+  //   printl("cleaning", 8);
 
-    cleanTable<configs>(get_self(), get_self().value);
-  }
+  //   cleanTable<bettings>(get_self(), get_self().value);
+  // }
+
+  // [[eosio::action]] void clearconfig() {
+  //   require_auth(get_self());
+  //   printl("cleaning", 8);
+
+  //   cleanTable<configs>(get_self(), get_self().value);
+  // }
 
   [[eosio::action]] void init();
+
+  [[eosio::action]] void setbtcprice(const double &price);
 
   [[eosio::action]] void addproduct(
       const name &product_name, const double &minimum_yield,
@@ -216,6 +225,7 @@ public:
       const string &memo);
 
   using init_action = eosio::action_wrapper<"init"_n, &lemonade::init>;
+  using setbtcprice_action = eosio::action_wrapper<"setbtcprice"_n, &lemonade::setbtcprice>;
   using addproduct_action =
       eosio::action_wrapper<"addproduct"_n, &lemonade::addproduct>;
   using rmproduct_action =

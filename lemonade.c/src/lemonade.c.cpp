@@ -12,7 +12,19 @@ void lemonade::init() {
       a.last_lem_bucket_fill = now();
       a.last_half_life_updated = now();
       a.half_life_count = 1;
+      a.btc_price = 0;
     });
+  }
+}
+
+void lemonade::setbtcprice(const double &price) {
+  require_auth(get_self());
+
+  configs config_table(get_self(), get_self().value);
+  auto existing_config = config_table.find(0);
+  if (existing_config == config_table.end()) {
+    config_table.modify(existing_config, same_payer,
+                        [&](config &a) { a.btc_price = price; });
   }
 }
 
@@ -80,8 +92,7 @@ void lemonade::rmproduct(const name &product_name) {
 
 void lemonade::stake(const name &owner, const asset &quantity,
                      const name &product_name,
-                     const optional<name> &price_prediction,
-                     const optional<double> &base_price) {
+                     const optional<name> &price_prediction) {
   require_auth(owner);
 
   check(quantity.is_valid(), "invalid quantity");
@@ -96,6 +107,10 @@ void lemonade::stake(const name &owner, const asset &quantity,
   auto accountIdx = accounts_table.get_index<eosio::name("byproductid")>();
   auto existing_account = accountIdx.find(existing_product->id);
   check(existing_account == accountIdx.end(), "already has same product");
+
+  configs config_table(get_self(), get_self().value);
+  auto existing_config = config_table.find(0);
+  check(existing_config != config_table.end(), "contract not initialized");
 
   if (existing_product->amount_per_account.amount != 0) {
     check(existing_product->amount_per_account.amount >= quantity.amount,
@@ -119,10 +134,10 @@ void lemonade::stake(const name &owner, const asset &quantity,
   double base = 0;
   name prediction = "none"_n;
   if (price_prediction.has_value() && price_prediction.value() != "none"_n) {
-    check(existing_product->has_prediction, "Product doesn't accept price prediction");
-    check(base_price.has_value(), "must be need base price");
+    check(existing_product->has_prediction,
+          "Product doesn't accept price prediction");
     prediction = price_prediction.value();
-    base = base_price.value();
+    base = existing_config->btc_price;
   }
 
   accounts_table.emplace(get_self(), [&](account &a) {
@@ -153,6 +168,7 @@ void lemonade::unstake(const name &owner, const name &product_name) {
   auto existing_config = config_table.find(0);
   check(existing_config != config_table.end(), "contract not initialized");
 
+  // issue new LEM
   auto current = now();
   const auto secs_since_last_fill =
       (current - existing_config->last_lem_bucket_fill);
@@ -212,10 +228,23 @@ void lemonade::unstake(const name &owner, const name &product_name) {
     current = existing_account->ended_at;
   }
 
+  auto yield = existing_account->current_yield;
+  if (existing_product->has_prediction == true) {
+    if (existing_account->price_prediction == "long"_n) {
+      yield = existing_config->btc_price > existing_account->base_price
+                  ? existing_product->maximum_yield
+                  : existing_product->minimum_yield;
+    } else if (existing_account->price_prediction == "short"_n) {
+      yield = existing_config->btc_price > existing_account->base_price
+                  ? existing_product->minimum_yield
+                  : existing_product->maximum_yield;
+    }
+  }
+
   const auto secs_since_last_led_reward =
       (current - existing_account->last_claim_led_reward);
   const auto yield_per_sec =
-      (existing_account->current_yield - 1) / secondsPerYear;
+      (yield - 1) / secondsPerYear;
   asset to_owner_led = existing_account->balance;
   asset to_owner_lem = new_token;
 
@@ -263,8 +292,7 @@ void lemonade::unstake(const name &owner, const name &product_name) {
   txn.actions.emplace_back(
       permission_level{get_self(), "active"_n}, "led.token"_n, "transfer"_n,
       make_tuple(get_self(), owner, to_owner_led, string("unstake")));
-  if (existing_product->has_lem_rewards == true) {
-    check(to_owner_lem.amount > 0, "unstake amount must not be zero");
+  if (existing_product->has_lem_rewards == true && to_owner_lem.amount > 0) {
     txn.actions.emplace_back(
         permission_level{get_self(), "active"_n}, "led.token"_n, "transfer"_n,
         make_tuple(get_self(), owner, to_owner_lem, string("unstake")));
@@ -677,14 +705,12 @@ void lemonade::transfer_event(const name &from, const name &to,
     return;
 
   vector<string> event = memoParser(memo);
-  double base = 0;
   name position = name("none");
   if (event[0] == "stake") {
-    if (event.size() >= 4) {
+    if (event.size() >= 3) {
       position = name(event[2]);
-      base = stod(event[3]);
     }
-    stake(from, quantity, name(event[1]), position, base);
+    stake(from, quantity, name(event[1]), position);
   }
   if (event[0] == "bet") {
     uint64_t bet_id = stoull(event[1]);
