@@ -35,7 +35,7 @@ private:
     id_type id;
     bool is_active;
     uint32_t last_lem_bucket_fill;
-    uint32_t last_half_life_updated;
+    vector<uint32_t> last_half_life_updated;
     uint32_t half_life_count;
     double btc_price;
 
@@ -138,6 +138,7 @@ private:
 
   uint32_t now();
   vector<string> memoParser(const string &memo);
+  void issue_lem();
   void stake(const name &owner, const asset &quantity, const name &product_name,
              const optional<name> &price_prediction);
   void bet(const name &owner, const asset &quantity, const uint64_t &bet_id,
@@ -178,12 +179,12 @@ public:
   //   cleanTable<bettings>(get_self(), get_self().value);
   // }
 
-  // [[eosio::action]] void clearconfig() {
-  //   require_auth(get_self());
-  //   printl("cleaning", 8);
+  [[eosio::action]] void clearconfig() {
+    require_auth(get_self());
+    printl("cleaning", 8);
 
-  //   cleanTable<configs>(get_self(), get_self().value);
-  // }
+    cleanTable<configs>(get_self(), get_self().value);
+  }
 
   [[eosio::action]] void init();
 

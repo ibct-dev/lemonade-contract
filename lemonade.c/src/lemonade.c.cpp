@@ -5,13 +5,17 @@ void lemonade::init() {
 
   configs config_table(get_self(), get_self().value);
   auto existing_config = config_table.find(0);
+  auto current = now();
   if (existing_config == config_table.end()) {
     config_table.emplace(get_self(), [&](config &a) {
       a.id = config_table.available_primary_key();
       a.is_active = true;
-      a.last_lem_bucket_fill = now();
-      a.last_half_life_updated = now();
-      a.half_life_count = 1;
+      a.last_lem_bucket_fill = current;
+      a.last_half_life_updated.push_back(current);
+      a.last_half_life_updated.push_back(current + secondsPerYear * 2);
+      a.last_half_life_updated.push_back(current + secondsPerYear * 4);
+      a.last_half_life_updated.push_back(current + secondsPerYear * 6);
+      a.half_life_count = 0;
       a.btc_price = 0;
     });
   }
@@ -167,48 +171,6 @@ void lemonade::unstake(const name &owner, const name &product_name) {
   auto existing_config = config_table.find(0);
   check(existing_config != config_table.end(), "contract not initialized");
 
-  // issue new LEM
-  auto current = now();
-  const auto secs_since_last_fill =
-      (current - existing_config->last_lem_bucket_fill);
-
-  const auto secs_since_last_half_life_updated =
-      (current - existing_config->last_half_life_updated);
-
-  auto half_life = existing_config->half_life_count;
-
-  asset new_token;
-  const auto latest_half_life =
-      (existing_config->last_half_life_updated + secondsPerYear * 2);
-
-  if (secs_since_last_half_life_updated >= secondsPerYear * 2) {
-    const auto secs_since_last_fill_to_latest_half_life =
-        (latest_half_life - existing_config->last_lem_bucket_fill);
-    const auto secs_since_latest_half_life = (current - latest_half_life);
-
-    asset before_half_life = asset(secs_since_last_fill_to_latest_half_life *
-                                       2 * 1'0000 / (2 * half_life),
-                                   symbol("LEM", 4));
-    half_life++;
-
-    asset after_half_life =
-        asset(secs_since_latest_half_life * 2 * 1'0000 / (2 * half_life),
-              symbol("LEM", 4));
-  } else {
-    new_token = asset(secs_since_last_fill * 2 * 1'0000 / (2 * half_life),
-                      symbol("LEM", 4));
-  }
-
-  action(permission_level{get_self(), "active"_n}, "led.token"_n, "issue"_n,
-         make_tuple(get_self(), new_token, string("issue")))
-      .send();
-
-  config_table.modify(existing_config, same_payer, [&](config &a) {
-    a.last_lem_bucket_fill = current;
-    a.last_half_life_updated = now();
-    a.half_life_count = half_life;
-  });
-
   products products_table(get_self(), get_self().value);
   auto productIdx = products_table.get_index<eosio::name("byname")>();
   auto existing_product = productIdx.find(product_name.value);
@@ -223,7 +185,11 @@ void lemonade::unstake(const name &owner, const name &product_name) {
     check(existing_account->ended_at <= now(), "account end time is not over");
   }
 
-  if (existing_account->ended_at != 0) {
+  // issue new LEM
+  issue_lem();
+  auto current = now();
+
+  if (existing_product->duration != 0) {
     current = existing_account->ended_at;
   }
 
@@ -240,46 +206,28 @@ void lemonade::unstake(const name &owner, const name &product_name) {
     }
   }
 
-  const auto secs_since_last_led_reward =
-      (current - existing_account->last_claim_led_reward);
+  // calculate total led rewards
   const auto yield_per_sec = (yield - 1) / secondsPerYear;
-  asset to_owner_led = existing_account->balance;
-  asset to_owner_lem = new_token;
+  asset total_led_reward = asset(yield_per_sec * (current - existing_account->started_at),  existing_account->balance.symbol);
+  asset to_owner_led = existing_account->balance + total_led_reward - existing_account->led_rewards;
 
+  // calculate total lem rewards
+  asset to_owner_lem = asset(0, symbol("LEM", 4));
+  uint32_t total_lem_reward_amount = 0; 
+  uint32_t last_reward = existing_account->started_at;
   if (existing_product->has_lem_rewards == true) {
-    asset total_led_reward =
-        asset(existing_account->balance.amount * (existing_product->duration) *
-                  yield_per_sec,
-              symbol("LED", 4));
-    to_owner_led += (total_led_reward - existing_account->led_rewards);
-
-    asset total_lem_reward;
-    if (latest_half_life >= existing_account->started_at &&
-        latest_half_life <= existing_account->ended_at) {
-      asset before_half_life =
-          asset(existing_account->balance.amount *
-                    (latest_half_life - existing_account->started_at) /
-                    secondsPerDay * lem_reward_rate / (2 * (half_life - 1)),
-                symbol("LEM", 4));
-
-      asset after_half_life =
-          asset(existing_account->balance.amount *
-                    (existing_account->ended_at - latest_half_life) /
-                    secondsPerDay * lem_reward_rate / (2 * half_life),
-                symbol("LEM", 4));
-      total_lem_reward = before_half_life + after_half_life;
-    } else {
-      total_lem_reward = asset(
-          existing_account->balance.amount *
-              (existing_product->duration / secondsPerDay) * lem_reward_rate,
-          symbol("LEM", 4));
+    for(int i = 0;i<4;i++){
+      if(existing_config->last_half_life_updated[i] <= current && 
+        current < existing_config->last_half_life_updated[i+1]){
+        total_lem_reward_amount += ((current - last_reward) / (uint32_t)pow(2,i));
+      }
+      else if(existing_config->last_half_life_updated[i+1] <= current){
+        total_lem_reward_amount += ((existing_config->last_half_life_updated[i+1] - last_reward) / (uint32_t)pow(2,i));
+        last_reward = existing_config->last_half_life_updated[i+1];
+      }
     }
-
+    asset total_lem_reward = asset(total_lem_reward_amount * 1'0000 * lem_reward_rate, symbol("LEM", 4));
     to_owner_lem = total_lem_reward - existing_account->lem_rewards;
-
-  } else {
-    to_owner_led.amount += (existing_account->balance.amount *
-                            secs_since_last_led_reward * yield_per_sec);
   }
 
   auto sender_id = now();
@@ -335,21 +283,20 @@ void lemonade::claimled(const name &owner, const name &product_name) {
   to_owner_led.amount =
       existing_account->balance.amount * secs_since_last_reward * yield_per_sec;
 
-  check(to_owner_led.amount > 0, "reward must not be zero or negative");
-
-  action(permission_level{get_self(), "active"_n}, "led.token"_n, "transfer"_n,
-         make_tuple(get_self(), owner, to_owner_led, string("claim led")))
-      .send();
-
-  accountIdx.modify(existing_account, same_payer, [&](account &a) {
-    a.last_claim_led_reward = current;
-    a.led_rewards += to_owner_led;
-  });
+  if(to_owner_led.amount > 0){
+    action(permission_level{get_self(), "active"_n}, "led.token"_n, "transfer"_n,
+          make_tuple(get_self(), owner, to_owner_led, string("claim led")))
+        .send();
+    accountIdx.modify(existing_account, same_payer, [&](account &a) {
+      a.last_claim_led_reward = current;
+      a.led_rewards += to_owner_led;
+    });
+  }
 }
 
 void lemonade::claimlem(const name &owner, const name &product_name) {
   require_auth(owner);
-
+  issue_lem();
   configs config_table(get_self(), get_self().value);
   auto existing_config = config_table.find(0);
   check(existing_config != config_table.end(), "contract not initialized");
@@ -367,78 +314,34 @@ void lemonade::claimlem(const name &owner, const name &product_name) {
   check(existing_product->has_lem_rewards,
         "there are no LEM rewards for this product ");
 
-  auto current = now();
-  auto secs_since_last_fill = (current - existing_config->last_lem_bucket_fill);
-
-  auto secs_since_last_half_life_updated =
-      (current - existing_config->last_half_life_updated);
-
-  auto half_life = existing_config->half_life_count;
-
-  asset new_token;
-  const auto latest_half_life =
-      (existing_config->last_half_life_updated + secondsPerYear * 2);
-
-  if (secs_since_last_half_life_updated >= secondsPerYear * 2) {
-    const auto secs_since_last_fill_to_latest_half_life =
-        (latest_half_life - existing_config->last_lem_bucket_fill);
-    const auto secs_since_latest_half_life = (current - latest_half_life);
-
-    asset before_half_life = asset(secs_since_last_fill_to_latest_half_life *
-                                       2 * 1'0000 / (2 * half_life),
-                                   symbol("LEM", 4));
-    half_life++;
-
-    asset after_half_life =
-        asset(secs_since_latest_half_life * 2 * 1'0000 / (2 * half_life),
-              symbol("LEM", 4));
-    new_token = before_half_life + after_half_life;
-  } else {
-    new_token = asset(secs_since_last_fill * 2 * 1'0000 / (2 * half_life),
-                      symbol("LEM", 4));
-  }
-
-  action(permission_level{get_self(), "active"_n}, "led.token"_n, "issue"_n,
-         make_tuple(get_self(), new_token, string("issue")))
-      .send();
-
+  const auto current = now();
   auto rewards_end_time =
-      now() >= existing_account->ended_at ? existing_account->ended_at : now();
+      current >= existing_account->ended_at ? existing_account->ended_at : current;
+  auto last_reward = existing_account->last_claim_lem_reward;
+  auto amount = 0;
 
-  asset to_owner_lem;
-
-  if (rewards_end_time >= latest_half_life &&
-      existing_account->last_claim_lem_reward <= latest_half_life) {
-    asset before_half_life =
-        asset(existing_account->balance.amount *
-                  (latest_half_life - existing_account->last_claim_lem_reward) /
-                  secondsPerDay * lem_reward_rate / (2 * (half_life - 1)),
-              symbol("LEM", 4));
-
-    asset after_half_life =
-        asset(existing_account->balance.amount *
-                  (rewards_end_time - latest_half_life) / secondsPerDay *
-                  lem_reward_rate / (2 * half_life),
-              symbol("LEM", 4));
-    to_owner_lem = before_half_life + after_half_life;
+  for(int i = 0;i<4;i++){
+    if(existing_config->last_half_life_updated[i] <= current && 
+        current < existing_config->last_half_life_updated[i+1]){
+      amount += ((current - last_reward) / (uint32_t)pow(2,i));
+    }
+    else if(existing_config->last_half_life_updated[i+1] <= current){
+      amount += ((existing_config->last_half_life_updated[i+1] - last_reward) / (uint32_t)pow(2,i));
+      last_reward = existing_config->last_half_life_updated[i+1];
+    }
   }
 
-  check(to_owner_lem.amount > 0, "reward must not be zero or negative");
+  asset to_owner_lem = asset(amount * 1'0000 * lem_reward_rate, symbol("LEM", 4));
 
-  action(permission_level{get_self(), "active"_n}, "led.token"_n, "transfer"_n,
-         make_tuple(get_self(), owner, to_owner_lem, string("claim lem")))
-      .send();
-
-  config_table.modify(existing_config, same_payer, [&](config &a) {
-    a.last_lem_bucket_fill = now();
-    a.last_half_life_updated = now();
-    a.half_life_count = half_life;
-  });
-
-  accountIdx.modify(existing_account, same_payer, [&](account &a) {
-    a.last_claim_lem_reward = rewards_end_time;
-    a.lem_rewards += to_owner_lem;
-  });
+  if(to_owner_lem.amount > 0){
+    action(permission_level{get_self(), "active"_n}, "led.token"_n, "transfer"_n,
+          make_tuple(get_self(), owner, to_owner_lem, string("claim lem")))
+        .send();
+    accountIdx.modify(existing_account, same_payer, [&](account &a) {
+      a.last_claim_lem_reward = rewards_end_time;
+      a.lem_rewards += to_owner_lem;
+    });
+  }
 }
 
 void lemonade::changeyield(const name &owner, const name &product_name,
@@ -691,6 +594,46 @@ void lemonade::claimbet(const uint64_t &bet_id) {
 
   bettings_table.modify(existing_betting, same_payer,
                         [&](betting &a) { a.status = Status::FINISHED; });
+}
+
+void lemonade::issue_lem(){
+  configs config_table(get_self(), get_self().value);
+  auto existing_config = config_table.find(0);
+  check(existing_config != config_table.end(), "contract not initialized");
+
+  if(existing_config->half_life_count == 4){
+    return ;
+  }
+
+  const auto current = now();
+  auto half_life = existing_config->half_life_count;
+  auto last_issued = existing_config->last_lem_bucket_fill;
+  uint32_t secs_since_last_fill = 0;
+
+  for(int i = half_life;i<4;i++){
+    if(existing_config->last_half_life_updated[i] <= current && 
+        current < existing_config->last_half_life_updated[i+1]){
+      secs_since_last_fill += ((current - last_issued) / (uint32_t)pow(2,i));
+      half_life = i;
+    }
+    else if(existing_config->last_half_life_updated[i+1] <= current){
+      secs_since_last_fill += ((existing_config->last_half_life_updated[i+1] - last_issued) / (uint32_t)pow(2,i));
+      last_issued = existing_config->last_half_life_updated[i+1];
+      half_life = i+1;
+    }
+  }
+
+  asset new_token = asset(secs_since_last_fill * 2'0000, symbol("LEM", 4));
+
+  action(permission_level{get_self(), "active"_n}, "led.token"_n, "issue"_n,
+         make_tuple(get_self(), new_token, string("issue")))
+      .send();
+
+  config_table.modify(existing_config, same_payer,
+                      [&](config &a) { 
+                        a.half_life_count = half_life; 
+                        a.last_lem_bucket_fill = last_issued;
+                      });
 }
 
 uint32_t lemonade::now() {
