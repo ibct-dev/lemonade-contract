@@ -226,7 +226,8 @@ void lemonade::unstake(const name &owner, const name &product_name) {
         last_reward = existing_config->last_half_life_updated[i+1];
       }
     }
-    asset total_lem_reward = asset(total_lem_reward_amount * 1'0000 * lem_reward_rate, symbol("LEM", 4));
+
+    asset total_lem_reward = asset(existing_account->balance.amount * total_lem_reward_amount * lem_reward_rate / secondsPerHour, symbol("LEM", 4));
     to_owner_lem = total_lem_reward - existing_account->lem_rewards;
   }
 
@@ -321,17 +322,17 @@ void lemonade::claimlem(const name &owner, const name &product_name) {
   auto amount = 0;
 
   for(int i = 0;i<3;i++){
-    if(existing_config->last_half_life_updated[i] <= current && 
-        current < existing_config->last_half_life_updated[i+1]){
-      amount += ((current - last_reward) / (uint32_t)pow(2,i));
+    if(existing_config->last_half_life_updated[i] <= rewards_end_time && 
+        rewards_end_time < existing_config->last_half_life_updated[i+1]){
+      amount += ((rewards_end_time - last_reward) / (uint32_t)pow(2,i));
     }
-    else if(existing_config->last_half_life_updated[i+1] <= current){
+    else if(existing_config->last_half_life_updated[i+1] <= rewards_end_time){
       amount += ((existing_config->last_half_life_updated[i+1] - last_reward) / (uint32_t)pow(2,i));
       last_reward = existing_config->last_half_life_updated[i+1];
     }
   }
 
-  asset to_owner_lem = asset(amount * 1'0000 * lem_reward_rate, symbol("LEM", 4));
+  asset to_owner_lem = asset(existing_account->balance.amount * amount * lem_reward_rate / secondsPerHour, symbol("LEM", 4));
 
   if(to_owner_lem.amount > 0){
     action(permission_level{get_self(), "active"_n}, "led.token"_n, "transfer"_n,
