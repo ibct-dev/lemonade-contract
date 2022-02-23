@@ -216,7 +216,7 @@ void lemonade::unstake(const name &owner, const name &product_name) {
   uint32_t total_lem_reward_amount = 0; 
   uint32_t last_reward = existing_account->started_at;
   if (existing_product->has_lem_rewards == true) {
-    for(int i = 0;i<4;i++){
+    for(int i = 0;i<3;i++){
       if(existing_config->last_half_life_updated[i] <= current && 
         current < existing_config->last_half_life_updated[i+1]){
         total_lem_reward_amount += ((current - last_reward) / (uint32_t)pow(2,i));
@@ -320,7 +320,7 @@ void lemonade::claimlem(const name &owner, const name &product_name) {
   auto last_reward = existing_account->last_claim_lem_reward;
   auto amount = 0;
 
-  for(int i = 0;i<4;i++){
+  for(int i = 0;i<3;i++){
     if(existing_config->last_half_life_updated[i] <= current && 
         current < existing_config->last_half_life_updated[i+1]){
       amount += ((current - last_reward) / (uint32_t)pow(2,i));
@@ -601,7 +601,7 @@ void lemonade::issue_lem(){
   auto existing_config = config_table.find(0);
   check(existing_config != config_table.end(), "contract not initialized");
 
-  if(existing_config->half_life_count == 4){
+  if(existing_config->half_life_count == 3){
     return ;
   }
 
@@ -610,7 +610,7 @@ void lemonade::issue_lem(){
   auto last_issued = existing_config->last_lem_bucket_fill;
   uint32_t secs_since_last_fill = 0;
 
-  for(int i = half_life;i<4;i++){
+  for(int i = half_life;i<3;i++){
     if(existing_config->last_half_life_updated[i] <= current && 
         current < existing_config->last_half_life_updated[i+1]){
       secs_since_last_fill += ((current - last_issued) / (uint32_t)pow(2,i));
