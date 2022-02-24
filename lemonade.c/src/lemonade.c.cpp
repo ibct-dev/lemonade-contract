@@ -208,7 +208,7 @@ void lemonade::unstake(const name &owner, const name &product_name) {
 
   // calculate total led rewards
   const auto yield_per_sec = (yield - 1) / secondsPerYear;
-  asset total_led_reward = asset(yield_per_sec * (current - existing_account->started_at),  existing_account->balance.symbol);
+  asset total_led_reward = asset(existing_account->balance.amount * yield_per_sec * (current - existing_account->started_at),  existing_account->balance.symbol);
   asset to_owner_led = existing_account->balance + total_led_reward - existing_account->led_rewards;
 
   // calculate total lem rewards
