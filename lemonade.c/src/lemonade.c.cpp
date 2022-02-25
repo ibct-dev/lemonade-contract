@@ -106,10 +106,10 @@ void lemonade::stake(const name &owner, const asset &quantity,
   auto existing_product = productIdx.find(product_name.value);
   check(existing_product != productIdx.end(), "product does not exist");
 
-  accounts accounts_table(get_self(), owner.value);
-  auto accountIdx = accounts_table.get_index<eosio::name("byproductid")>();
-  auto existing_account = accountIdx.find(existing_product->id);
-  check(existing_account == accountIdx.end(), "already has same product");
+  stakings stakings_table(get_self(), owner.value);
+  auto stakingIdx = stakings_table.get_index<eosio::name("byproductid")>();
+  auto existing_staking = stakingIdx.find(existing_product->id);
+  check(existing_staking == stakingIdx.end(), "already has same product");
 
   configs config_table(get_self(), get_self().value);
   auto existing_config = config_table.find(0);
@@ -143,8 +143,8 @@ void lemonade::stake(const name &owner, const asset &quantity,
     base = existing_config->btc_price;
   }
 
-  accounts_table.emplace(get_self(), [&](account &a) {
-    a.id = accounts_table.available_primary_key();
+  stakings_table.emplace(get_self(), [&](staking &a) {
+    a.id = stakings_table.available_primary_key();
     a.balance = quantity;
     a.product_id = existing_product->id;
     a.current_yield = existing_product->minimum_yield;
@@ -176,13 +176,13 @@ void lemonade::unstake(const name &owner, const name &product_name) {
   auto existing_product = productIdx.find(product_name.value);
   check(existing_product != productIdx.end(), "product does not exist");
 
-  accounts accounts_table(get_self(), owner.value);
-  auto accountIdx = accounts_table.get_index<eosio::name("byproductid")>();
-  auto existing_account = accountIdx.find(existing_product->id);
-  check(existing_account != accountIdx.end(), "owner does not has product");
+  stakings stakings_table(get_self(), owner.value);
+  auto stakingIdx = stakings_table.get_index<eosio::name("byproductid")>();
+  auto existing_staking = stakingIdx.find(existing_product->id);
+  check(existing_staking != stakingIdx.end(), "owner does not has product");
 
-  if (existing_account->ended_at != 0) {
-    check(existing_account->ended_at <= now(), "account end time is not over");
+  if (existing_staking->ended_at != 0) {
+    check(existing_staking->ended_at <= now(), "account end time is not over");
   }
 
   // issue new LEM
@@ -190,17 +190,17 @@ void lemonade::unstake(const name &owner, const name &product_name) {
   auto current = now();
 
   if (existing_product->duration != 0) {
-    current = existing_account->ended_at;
+    current = existing_staking->ended_at;
   }
 
-  auto yield = existing_account->current_yield;
+  auto yield = existing_staking->current_yield;
   if (existing_product->has_prediction == true) {
-    if (existing_account->price_prediction == "long"_n) {
-      yield = existing_config->btc_price > existing_account->base_price
+    if (existing_staking->price_prediction == "long"_n) {
+      yield = existing_config->btc_price > existing_staking->base_price
                   ? existing_product->maximum_yield
                   : existing_product->minimum_yield;
-    } else if (existing_account->price_prediction == "short"_n) {
-      yield = existing_config->btc_price > existing_account->base_price
+    } else if (existing_staking->price_prediction == "short"_n) {
+      yield = existing_config->btc_price > existing_staking->base_price
                   ? existing_product->minimum_yield
                   : existing_product->maximum_yield;
     }
@@ -208,13 +208,13 @@ void lemonade::unstake(const name &owner, const name &product_name) {
 
   // calculate total led rewards
   const auto yield_per_sec = (yield - 1) / secondsPerYear;
-  asset total_led_reward = asset(existing_account->balance.amount * yield_per_sec * (current - existing_account->started_at),  existing_account->balance.symbol);
-  asset to_owner_led = existing_account->balance + total_led_reward - existing_account->led_rewards;
+  asset total_led_reward = asset(existing_staking->balance.amount * yield_per_sec * (current - existing_staking->started_at),  existing_staking->balance.symbol);
+  asset to_owner_led = existing_staking->balance + total_led_reward - existing_staking->led_rewards;
 
   // calculate total lem rewards
   asset to_owner_lem = asset(0, symbol("LEM", 4));
   uint32_t total_lem_reward_amount = 0; 
-  uint32_t last_reward = existing_account->started_at;
+  uint32_t last_reward = existing_staking->started_at;
   if (existing_product->has_lem_rewards == true) {
     for(int i = 0;i<3;i++){
       if(existing_config->last_half_life_updated[i] <= current && 
@@ -227,8 +227,8 @@ void lemonade::unstake(const name &owner, const name &product_name) {
       }
     }
 
-    asset total_lem_reward = asset(existing_account->balance.amount * total_lem_reward_amount * lem_reward_rate / secondsPerHour, symbol("LEM", 4));
-    to_owner_lem = total_lem_reward - existing_account->lem_rewards;
+    asset total_lem_reward = asset(existing_staking->balance.amount * total_lem_reward_amount * lem_reward_rate / secondsPerHour, symbol("LEM", 4));
+    to_owner_lem = total_lem_reward - existing_staking->lem_rewards;
   }
 
   auto sender_id = now();
@@ -248,12 +248,12 @@ void lemonade::unstake(const name &owner, const name &product_name) {
   txn.send(sender_id, get_self());
 
   productIdx.modify(existing_product, same_payer, [&](product &a) {
-    a.current_amount -= existing_account->balance;
+    a.current_amount -= existing_staking->balance;
     a.buyers.erase(remove(a.buyers.begin(), a.buyers.end(), owner),
                    a.buyers.end());
   });
 
-  accountIdx.erase(existing_account);
+  stakingIdx.erase(existing_staking);
 }
 
 void lemonade::claimled(const name &owner, const name &product_name) {
@@ -264,31 +264,31 @@ void lemonade::claimled(const name &owner, const name &product_name) {
   auto existing_product = productIdx.find(product_name.value);
   check(existing_product != productIdx.end(), "product does not exist");
 
-  accounts accounts_table(get_self(), owner.value);
-  auto accountIdx = accounts_table.get_index<eosio::name("byproductid")>();
-  auto existing_account = accountIdx.find(existing_product->id);
-  check(existing_account != accountIdx.end(), "owner does not has product");
+  stakings stakings_table(get_self(), owner.value);
+  auto stakingIdx = stakings_table.get_index<eosio::name("byproductid")>();
+  auto existing_staking = stakingIdx.find(existing_product->id);
+  check(existing_staking != stakingIdx.end(), "owner does not has product");
 
   auto current = now();
   if (existing_product->duration != 0) {
-    current = now() >= existing_account->ended_at ? existing_account->ended_at
+    current = now() >= existing_staking->ended_at ? existing_staking->ended_at
                                                   : now();
   }
 
   const auto secs_since_last_reward =
-      (current - existing_account->last_claim_led_reward);
+      (current - existing_staking->last_claim_led_reward);
 
   const auto yield_per_sec =
-      (existing_account->current_yield - 1) / secondsPerYear;
+      (existing_staking->current_yield - 1) / secondsPerYear;
   asset to_owner_led = asset(0, symbol("LED", 4));
   to_owner_led.amount =
-      existing_account->balance.amount * secs_since_last_reward * yield_per_sec;
+      existing_staking->balance.amount * secs_since_last_reward * yield_per_sec;
 
   if(to_owner_led.amount > 0){
     action(permission_level{get_self(), "active"_n}, "led.token"_n, "transfer"_n,
           make_tuple(get_self(), owner, to_owner_led, string("claim led")))
         .send();
-    accountIdx.modify(existing_account, same_payer, [&](account &a) {
+    stakingIdx.modify(existing_staking, same_payer, [&](staking &a) {
       a.last_claim_led_reward = current;
       a.led_rewards += to_owner_led;
     });
@@ -307,18 +307,18 @@ void lemonade::claimlem(const name &owner, const name &product_name) {
   auto existing_product = productIdx.find(product_name.value);
   check(existing_product != productIdx.end(), "product does not exist");
 
-  accounts accounts_table(get_self(), owner.value);
-  auto accountIdx = accounts_table.get_index<eosio::name("byproductid")>();
-  auto existing_account = accountIdx.find(existing_product->id);
-  check(existing_account != accountIdx.end(), "owner does not has product");
+  stakings stakings_table(get_self(), owner.value);
+  auto stakingIdx = stakings_table.get_index<eosio::name("byproductid")>();
+  auto existing_staking = stakingIdx.find(existing_product->id);
+  check(existing_staking != stakingIdx.end(), "owner does not has product");
 
   check(existing_product->has_lem_rewards,
         "there are no LEM rewards for this product ");
 
   const auto current = now();
   auto rewards_end_time =
-      current >= existing_account->ended_at ? existing_account->ended_at : current;
-  auto last_reward = existing_account->last_claim_lem_reward;
+      current >= existing_staking->ended_at ? existing_staking->ended_at : current;
+  auto last_reward = existing_staking->last_claim_lem_reward;
   auto amount = 0;
 
   for(int i = 0;i<3;i++){
@@ -332,13 +332,13 @@ void lemonade::claimlem(const name &owner, const name &product_name) {
     }
   }
 
-  asset to_owner_lem = asset(existing_account->balance.amount * amount * lem_reward_rate / secondsPerHour, symbol("LEM", 4));
+  asset to_owner_lem = asset(existing_staking->balance.amount * amount * lem_reward_rate / secondsPerHour, symbol("LEM", 4));
 
   if(to_owner_lem.amount > 0){
     action(permission_level{get_self(), "active"_n}, "led.token"_n, "transfer"_n,
           make_tuple(get_self(), owner, to_owner_lem, string("claim lem")))
         .send();
-    accountIdx.modify(existing_account, same_payer, [&](account &a) {
+    stakingIdx.modify(existing_staking, same_payer, [&](staking &a) {
       a.last_claim_lem_reward = rewards_end_time;
       a.lem_rewards += to_owner_lem;
     });
@@ -354,17 +354,17 @@ void lemonade::changeyield(const name &owner, const name &product_name,
   auto existing_product = productIdx.find(product_name.value);
   check(existing_product != productIdx.end(), "product does not exist");
 
-  accounts accounts_table(get_self(), owner.value);
-  auto accountIdx = accounts_table.get_index<eosio::name("byproductid")>();
-  auto existing_account = accountIdx.find(existing_product->id);
-  check(existing_account != accountIdx.end(), "owner does not has product");
+  stakings stakings_table(get_self(), owner.value);
+  auto stakingIdx = stakings_table.get_index<eosio::name("byproductid")>();
+  auto existing_staking = stakingIdx.find(existing_product->id);
+  check(existing_staking != stakingIdx.end(), "owner does not has product");
 
   check(yield >= existing_product->minimum_yield &&
             yield <= existing_product->maximum_yield,
         "exceed product yield range");
 
-  accountIdx.modify(existing_account, same_payer,
-                    [&](account &a) { a.current_yield = yield; });
+  stakingIdx.modify(existing_staking, same_payer,
+                    [&](staking &a) { a.current_yield = yield; });
 }
 
 void lemonade::createbet(const uint32_t &started_at,
