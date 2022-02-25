@@ -20,7 +20,7 @@ typedef uint64_t id_type;
 
 class [[eosio::contract("lemonade.c")]] lemonade : public contract {
 private:
-  const uint64_t delay_transfer_sec = 1;
+  const uint64_t delay_transfer_sec = 120;
   const double lem_reward_rate = 0.001; // Reward per sec
 
   const enum Status {
@@ -66,7 +66,7 @@ private:
     bool buyer_count() const { return buyers.size(); }
   };
 
-  struct [[eosio::table]] account {
+  struct [[eosio::table]] staking {
     id_type id;
     asset balance;
     id_type product_id;
@@ -129,10 +129,10 @@ private:
       products;
 
   typedef eosio::multi_index<
-      "accounts"_n, account,
+      "stakings"_n, staking,
       indexed_by<"byproductid"_n,
-                 const_mem_fun<account, uint64_t, &account::get_product_id>>>
-      accounts;
+                 const_mem_fun<staking, uint64_t, &staking::get_product_id>>>
+      stakings;
 
   typedef eosio::multi_index<"bettings"_n, betting> bettings;
 
