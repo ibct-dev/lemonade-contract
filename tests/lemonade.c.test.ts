@@ -391,7 +391,7 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                             maximum_yield: 1.71, 
                             amount_per_account: "9000.0000 LED", 
                             maximum_amount_limit: "11000.0000 LED",
-                            duration: 21
+                            duration: 22
                         },
                         [
                             {
@@ -447,11 +447,11 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                     errorCount += 1;
                 }
             });
-            it(`account 테이블에 생성 확인`, async () => {
-                const tableResult = await contractTester.tables.accounts({
+            it(`staking 테이블에 생성 확인`, async () => {
+                const tableResult = await contractTester.tables.stakings({
                     scope: user,
                 });
-                if (debug) console.log(`Accounts\n${JSON.stringify(tableResult)}`);
+                if (debug) console.log(`stakings\n${JSON.stringify(tableResult)}`);
                 const onlyCreated = tableResult[0];
                 expect(onlyCreated).to.deep.include({ balance: `${stake}.0000 LED` });
             });
@@ -706,11 +706,11 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                     errorCount += 1;
                 }
             });
-            it(`account 테이블에 변경 확인`, async () => {
-                const tableResult = await contractTester.tables.accounts({
+            it(`staking 테이블에 변경 확인`, async () => {
+                const tableResult = await contractTester.tables.stakings({
                     scope: user,
                 });
-                if (debug) console.log(`Accounts\n${JSON.stringify(tableResult)}`);
+                if (debug) console.log(`stakings\n${JSON.stringify(tableResult)}`);
             });
 
             it(`${user} 유저가 고정상품에 대한 led 중간보상을 수령함`, async () => {
@@ -738,11 +738,11 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                     errorCount += 1;
                 }
             });
-            it(`account 테이블에 변경 확인`, async () => {
-                const tableResult = await contractTester.tables.accounts({
+            it(`staking 테이블에 변경 확인`, async () => {
+                const tableResult = await contractTester.tables.stakings({
                     scope: user,
                 });
-                if (debug) console.log(`Accounts\n${JSON.stringify(tableResult)}`);
+                if (debug) console.log(`stakings\n${JSON.stringify(tableResult)}`);
             });
 
             it(`${user} 유저가 고정상품에 대한 lem 중간보상을 수령함`, async () => {
@@ -770,11 +770,11 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                     errorCount += 1;
                 }
             });
-            it(`account 테이블에 변경 확인`, async () => {
-                const tableResult = await contractTester.tables.accounts({
+            it(`stakings 테이블에 변경 확인`, async () => {
+                const tableResult = await contractTester.tables.stakings({
                     scope: user,
                 });
-                if (debug) console.log(`Accounts\n${JSON.stringify(tableResult)}`);
+                if (debug) console.log(`stakings\n${JSON.stringify(tableResult)}`);
             });
         });
 
@@ -830,11 +830,11 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                     errorCount +=1;
                 }
             });
-            it(`account 테이블에 변경 확인`, async () => {
-                const tableResult = await contractTester.tables.accounts({
+            it(`staking 테이블에 변경 확인`, async () => {
+                const tableResult = await contractTester.tables.stakings({
                     scope: user,
                 });
-                if (debug) console.log(`Accounts\n${JSON.stringify(tableResult)}`);
+                if (debug) console.log(`stakings\n${JSON.stringify(tableResult)}`);
             });
         });
 
@@ -866,11 +866,11 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                     errorCount += 1;
                 }
             });
-            it(`account 테이블에 삭제 확인`, async () => {
-                const tableResult = await contractTester.tables.accounts({
+            it(`staking 테이블에 삭제 확인`, async () => {
+                const tableResult = await contractTester.tables.stakings({
                     scope: user,
                 });
-                if (debug) console.log(`Accounts\n${JSON.stringify(tableResult)}`);
+                if (debug) console.log(`stakings\n${JSON.stringify(tableResult)}`);
                 const onlyCreated = tableResult[1];
                 expect(onlyCreated).to.equal(undefined);
             });
@@ -951,11 +951,11 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                     expect(true).to.be.true; // 시간이 너무 짧아 LEM이 0임..
                 }
             });
-            it(`account 테이블에 삭제 확인`, async () => {
-                const tableResult = await contractTester.tables.accounts({
+            it(`staking 테이블에 삭제 확인`, async () => {
+                const tableResult = await contractTester.tables.stakings({
                     scope: user,
                 });
-                if (debug) console.log(`Accounts\n${JSON.stringify(tableResult)}`);
+                if (debug) console.log(`stakings\n${JSON.stringify(tableResult)}`);
             });
         });
 
@@ -965,7 +965,7 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                     const actionResult = await contractTester.actions.createbet(
                         {
                             started_at: seconds_since_epoch(Date.now()) + 2,
-                            betting_ended_at: seconds_since_epoch(Date.now()) + 6,
+                            betting_ended_at: seconds_since_epoch(Date.now()) + 7,
                             ended_at: seconds_since_epoch(Date.now()) + 7, 
                         },
                         [
