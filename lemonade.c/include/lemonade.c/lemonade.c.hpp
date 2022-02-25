@@ -22,6 +22,10 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
    private:
     const uint64_t delay_transfer_sec = 1;
     const double lem_reward_rate = 0.001;  // Reward per sec
+    const int64_t MAX = eosio::asset::max_amount;
+    const int64_t INIT_MAX = 1000000000000000;  // 10^15
+    const int ADD_LIQUIDITY_FEE = 1;
+    const int DEFAULT_FEE = 10;
 
     const enum Status {
         NOT_STARTED,
@@ -204,6 +208,12 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
                      const name &ram_payer);
     void sub_balance(const name &owner, const asset &value);
     void check_frozen(const name &account);
+    void add_signed_ext_balance(const name &owner, const extended_asset &value);
+    void add_signed_liq(name user, asset to_buy, bool is_buying,
+                        asset max_asset1, asset max_asset2);
+    int64_t compute(int64_t x, int64_t y, int64_t z, int fee);
+    extended_asset process_exch(symbol_code evo_token, extended_asset paying,
+                                asset min_expected);
 
     template <typename T>
     void cleanTable(name self, uint64_t scope = 0) {
@@ -300,6 +310,21 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
     [[eosio::action]] void claimbet(const uint64_t &bet_id);
 
     // DEX Actions
+    [[eosio::action]] void openext(const name &user,
+                                   const extended_symbol &ext_symbol);
+    [[eosio::action]] void closeext(const name &user, const name &to,
+                                    const extended_symbol &ext_symbol,
+                                    string memo);
+    [[eosio::action]] void withdraw(name user, name to,
+                                    extended_asset to_withdraw, string memo);
+    [[eosio::action]] void addliquidity(name user, asset to_buy,
+                                        asset max_asset1, asset max_asset2);
+    [[eosio::action]] void remliquidity(name user, asset to_sell,
+                                        asset min_asset1, asset min_asset2);
+    [[eosio::action]] void exchange(name user, symbol_code pair_token,
+                                    extended_asset ext_asset_in,
+                                    asset min_expected);
+    [[eosio::action]] void changefee(symbol_code pair_token, int newfee);
 
     // On Notify
     [[eosio::on_notify("*::transfer")]] void transfer_event(

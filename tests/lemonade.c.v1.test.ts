@@ -10,7 +10,7 @@ beforeEach(async () => {
     console.log("----------------------");
 });
 
-describe("lemonade.c 컨트랙트 테스트", () => {
+describe("lemonade.c v1 컨트랙트 테스트", () => {
     const debug = 1;
     const isLocal = true;
     const bc = new Blockchain({ host: "127.0.0.1", port: "8888" }); // test
@@ -447,11 +447,11 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                     errorCount += 1;
                 }
             });
-            it(`account 테이블에 생성 확인`, async () => {
-                const tableResult = await contractTester.tables.accounts({
+            it(`staking 테이블에 생성 확인`, async () => {
+                const tableResult = await contractTester.tables.stakings({
                     scope: user,
                 });
-                if (debug) console.log(`Accounts\n${JSON.stringify(tableResult)}`);
+                if (debug) console.log(`stakings\n${JSON.stringify(tableResult)}`);
                 const onlyCreated = tableResult[0];
                 expect(onlyCreated).to.deep.include({ balance: `${stake}.0000 LED` });
             });
