@@ -391,7 +391,7 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                             maximum_yield: 1.71, 
                             amount_per_account: "9000.0000 LED", 
                             maximum_amount_limit: "11000.0000 LED",
-                            duration: 21
+                            duration: 22
                         },
                         [
                             {
@@ -965,7 +965,7 @@ describe("lemonade.c 컨트랙트 테스트", () => {
                     const actionResult = await contractTester.actions.createbet(
                         {
                             started_at: seconds_since_epoch(Date.now()) + 2,
-                            betting_ended_at: seconds_since_epoch(Date.now()) + 6,
+                            betting_ended_at: seconds_since_epoch(Date.now()) + 7,
                             ended_at: seconds_since_epoch(Date.now()) + 7, 
                         },
                         [
