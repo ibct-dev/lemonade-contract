@@ -1,0 +1,2 @@
+rm -rf /home/dev001/genergy.c/nodeos-data-volume/nodeos-data/contracts/lemonade.c
+cp -r /home/dev001/contract/lemonade-contract/lemonade.c/build/lemonade.c /home/dev001/genergy.c/nodeos-data-volume/nodeos-data/contracts
