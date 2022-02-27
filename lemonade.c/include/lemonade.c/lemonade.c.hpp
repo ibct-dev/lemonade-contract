@@ -158,9 +158,9 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
     };
 
     struct [[eosio::table]] index_struct {
-        symbol evo_symbol;
+        symbol lp_symbol;
         checksum256 id_256;
-        uint64_t primary_key() const { return evo_symbol.code().raw(); }
+        uint64_t primary_key() const { return lp_symbol.code().raw(); }
         checksum256 secondary_key() const { return id_256; }
     };
 
@@ -214,6 +214,10 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
     int64_t compute(int64_t x, int64_t y, int64_t z, int fee);
     extended_asset process_exch(symbol_code evo_token, extended_asset paying,
                                 asset min_expected);
+    void memoexchange(name user, extended_asset ext_asset_in, symbol_code pair_token,
+                      asset min_expected);
+    void placeindex(name user, symbol lp_symbol, extended_asset pool1,
+                    extended_asset pool2);
 
     template <typename T>
     void cleanTable(name self, uint64_t scope = 0) {
@@ -310,6 +314,10 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
     [[eosio::action]] void claimbet(const uint64_t &bet_id);
 
     // DEX Actions
+    [[eosio::action]] void inittoken(
+        name user, symbol new_symbol, extended_asset initial_pool1,
+        extended_asset initial_pool2, int initial_fee, name fee_contract);
+
     [[eosio::action]] void openext(const name &user,
                                    const extended_symbol &ext_symbol);
     [[eosio::action]] void closeext(const name &user, const name &to,
@@ -325,6 +333,10 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
                                     extended_asset ext_asset_in,
                                     asset min_expected);
     [[eosio::action]] void changefee(symbol_code pair_token, int newfee);
+
+    [[eosio::action]] void indexpair(
+        name user,
+        symbol lp_symbol);  // This action is only temporarily useful
 
     // On Notify
     [[eosio::on_notify("*::transfer")]] void transfer_event(
