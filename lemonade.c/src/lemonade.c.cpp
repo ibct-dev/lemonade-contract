@@ -23,6 +23,11 @@ void lemonade::init() {
     }
 }
 
+void lemonade::issuelem() {
+    require_auth(get_self());
+    issue_lem();
+}
+
 void lemonade::setbtcprice(const double &price) {
     require_auth(get_self());
 

@@ -303,6 +303,35 @@ describe("lemonade.c v1 컨트랙트 테스트", () => {
             });
         });
 
+        describe("IssueLEM: issuelem()", async () => {
+            it(`${manager} 유저가 lem 발행`, async () => {
+                try {
+                    const actionResult = await contractTester.actions.issuelem(
+                        {},
+                        [
+                            {
+                                actor: manager,
+                                permission: "active",
+                            },
+                        ]
+                    );
+                    expect(actionResult).to.have.all.keys([
+                        "transaction_id",
+                        "processed",
+                    ]);
+                } catch (error) {
+                    console.log(
+                        `ERROR ${errorCount}: cannot issuelem: ${error}`
+                    );
+                    errorCount += 1;
+                }
+            });
+            it(`${manager} 계정 LEM 잔액 확인`, async () => {
+                const balance = await bc.rpc.get_currency_balance('led.token', manager, 'LEM');
+                console.log(balance);
+            });
+        });
+
         describe("Product: addproduct()", async () => {
             it(`${manager} 유저가 일반 예금 상품을 생성함`, async () => {
                 try {

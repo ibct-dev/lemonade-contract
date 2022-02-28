@@ -264,6 +264,8 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
 
     // Initialize Actions
     [[eosio::action]] void init();
+    
+    [[eosio::action]] void issuelem();
 
     [[eosio::action]] void setbtcprice(const double &price);
 
