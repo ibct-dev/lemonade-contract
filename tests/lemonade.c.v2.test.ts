@@ -1,10 +1,6 @@
 import { Blockchain } from "@ibct-dev/sclest";
 import { expect } from "chai";
 
-function seconds_since_epoch(d: number) {
-    return Math.floor(d / 1000);
-}
-
 beforeEach(async () => {
     await new Promise(resolve => setTimeout(resolve, 1000));
     console.log("----------------------");
@@ -226,7 +222,7 @@ describe("lemonade.c v2 컨트랙트 테스트", () => {
                     const actionResult = await ledTokenTester.actions.issue(
                         {
                             to: manager,
-                            quantity: `400.0000 LEM`,
+                            quantity: `4000.0000 LEM`,
                             memo: `SHOW ME THE MONEY`
                         },
                         [
@@ -253,7 +249,7 @@ describe("lemonade.c v2 컨트랙트 테스트", () => {
                         {
                             from: manager,
                             to: user,
-                            quantity: `400.0000 LEM`,
+                            quantity: `4000.0000 LEM`,
                             memo: `SHOW ME THE MONEY`
                         },
                         [
@@ -478,13 +474,47 @@ describe("lemonade.c v2 컨트랙트 테스트", () => {
         });
 
         describe("deposit() & withdraw(): 채널에 토큰을 저장하고 꺼내기", async () => {
+            it(`${user}가 LED을 저장함`, async () => {
+                try {
+                    const actionResult = await ledTokenTester.actions.transfer(
+                        {
+                            from: user,
+                            to: manager,
+                            quantity: `300.0000 LED`,
+                            memo: `deposit`
+                        },
+                        [
+                            {
+                                actor: user,
+                                permission: "active",
+                            },
+                        ]
+                    );
+                    expect(actionResult).to.have.all.keys([
+                        "transaction_id",
+                        "processed",
+                    ]);
+                } catch (error) {
+                    console.log(
+                        `ERROR ${errorCount}: cannot transfer: ${error}`
+                    );
+                    errorCount += 1;
+                }
+            });
+            it(`dexacnts 테이블에 변경 확인`, async () => {
+                const tableResult = await contractTester.tables.dexacnts({
+                    scope: user,
+                });
+                if (debug) console.log(`Dexacnts\n${JSON.stringify(tableResult)}`);
+                const onlyCreated = tableResult[0];
+            });
             it(`${user}가 LEM을 저장함`, async () => {
                 try {
                     const actionResult = await ledTokenTester.actions.transfer(
                         {
                             from: user,
                             to: manager,
-                            quantity: `300.0000 LEM`,
+                            quantity: `500.0000 LEM`,
                             memo: `deposit`
                         },
                         [
@@ -548,6 +578,252 @@ describe("lemonade.c v2 컨트랙트 테스트", () => {
                 });
                 if (debug) console.log(`Dexacnts\n${JSON.stringify(tableResult)}`);
                 const onlyCreated = tableResult[1];
+            });
+            it(`${user} 계정 LEM 잔액 확인`, async () => {
+                const balance = await bc.rpc.get_currency_balance('led.token', user, 'LEM');
+                expect(balance[0]).to.equal(`3600.0000 LEM`);
+            });
+        });
+
+        describe("Pool: 풀 생성, 유동성 공급 및 회수", async () => {
+            it(`${user}가 LED-LEM풀을 생성함`, async () => {
+                try {
+                    const actionResult = await contractTester.actions.inittoken(
+                        {
+                            user: user,
+                            new_symbol: `4,LEDLEM`,
+                            initial_pool1: {
+                                quantity: "100.0000 LED",
+                                contract: "led.token"
+                            },
+                            initial_pool2: {
+                                quantity: "100.0000 LEM",
+                                contract: "led.token"
+                            },
+                            initial_fee: 0,
+                            fee_contract: manager
+                        },
+                        [
+                            {
+                                actor: user,
+                                permission: "active",
+                            },
+                        ]
+                    );
+                    expect(actionResult).to.have.all.keys([
+                        "transaction_id",
+                        "processed",
+                    ]);
+                } catch (error) {
+                    console.log(
+                        `ERROR ${errorCount}: cannot transfer: ${error}`
+                    );
+                    errorCount += 1;
+                }
+            });
+            it(`dexacnts 테이블에 변경 확인`, async () => {
+                const tableResult = await contractTester.tables.dexacnts({
+                    scope: user,
+                });
+                if (debug) console.log(`Dexacnts\n${JSON.stringify(tableResult)}`);
+            });
+            it(`stats 테이블에 변경 확인`, async () => {
+                const tableResult = await contractTester.tables.stats({
+                    scope: "LEDLEM",
+                });
+                if (debug) console.log(`Stats\n${JSON.stringify(tableResult)}`);
+                expect(tableResult[0]).to.not.undefined;
+            });
+            it(`${user} 계정 LP토큰 잔액 확인`, async () => {
+                const balance = await bc.rpc.get_currency_balance('lemonade.c', user, 'LEDLEM');
+                console.log(balance);
+                expect(balance[0]).to.not.undefined;
+            });
+            it(`${user}가 LED-LEM풀에 유동성을 공급함`, async () => {
+                try {
+                    const actionResult = await contractTester.actions.addliquidity(
+                        {
+                            user: user,
+                            to_buy: "50.0000 LEDLEM",
+                            max_asset1: "100.0000 LED",
+                            max_asset2: "100.0000 LEM"
+                        },
+                        [
+                            {
+                                actor: user,
+                                permission: "active",
+                            },
+                        ]
+                    );
+                    expect(actionResult).to.have.all.keys([
+                        "transaction_id",
+                        "processed",
+                    ]);
+                } catch (error) {
+                    console.log(
+                        `ERROR ${errorCount}: cannot transfer: ${error}`
+                    );
+                    errorCount += 1;
+                }
+            });
+            it(`dexacnts 테이블에 변경 확인`, async () => {
+                const tableResult = await contractTester.tables.dexacnts({
+                    scope: user,
+                });
+                if (debug) console.log(`Dexacnts\n${JSON.stringify(tableResult)}`);
+            });
+            it(`stats 테이블에 변경 확인`, async () => {
+                const tableResult = await contractTester.tables.stats({
+                    scope: "LEDLEM",
+                });
+                if (debug) console.log(`Stats\n${JSON.stringify(tableResult)}`);
+                expect(tableResult[0]).to.not.undefined;
+            });
+            it(`${user} 계정 LP토큰 잔액 확인`, async () => {
+                const balance = await bc.rpc.get_currency_balance('lemonade.c', user, 'LEDLEM');
+                console.log(balance);
+                expect(balance[0]).to.not.undefined;
+            });
+
+            it(`${user}가 LED-LEM풀에 유동성을 회수함`, async () => {
+                try {
+                    const actionResult = await contractTester.actions.remliquidity(
+                        {
+                            user: user,
+                            to_sell: "50.0000 LEDLEM",
+                            min_asset1: "10.0000 LED",
+                            min_asset2: "10.0000 LEM"
+                        },
+                        [
+                            {
+                                actor: user,
+                                permission: "active",
+                            },
+                        ]
+                    );
+                    expect(actionResult).to.have.all.keys([
+                        "transaction_id",
+                        "processed",
+                    ]);
+                } catch (error) {
+                    console.log(
+                        `ERROR ${errorCount}: cannot transfer: ${error}`
+                    );
+                    errorCount += 1;
+                }
+            });
+            it(`dexacnts 테이블에 변경 확인`, async () => {
+                const tableResult = await contractTester.tables.dexacnts({
+                    scope: user,
+                });
+                if (debug) console.log(`Dexacnts\n${JSON.stringify(tableResult)}`);
+            });
+            it(`stats 테이블에 변경 확인`, async () => {
+                const tableResult = await contractTester.tables.stats({
+                    scope: "LEDLEM",
+                });
+                if (debug) console.log(`Stats\n${JSON.stringify(tableResult)}`);
+                expect(tableResult[0]).to.not.undefined;
+            });
+            it(`${user} 계정 LP토큰 잔액 확인`, async () => {
+                const balance = await bc.rpc.get_currency_balance('lemonade.c', user, 'LEDLEM');
+                console.log(balance);
+                expect(balance[0]).to.not.undefined;
+            });
+        });
+
+        describe("exchange(): 풀을 이용하여 토큰 스왑", async () => {
+            it(`${user}가 LED를 이용하여 LEM을 획득함`, async () => {
+                try {
+                    const actionResult = await ledTokenTester.actions.transfer(
+                        {
+                            from: user,
+                            to: manager,
+                            quantity: `10.0000 LED`,
+                            memo: `exchange/LEDLEM/10.0000 LEM`
+                        },
+                        [
+                            {
+                                actor: user,
+                                permission: "active",
+                            },
+                        ]
+                    );
+                    expect(actionResult).to.have.all.keys([
+                        "transaction_id",
+                        "processed",
+                    ]);
+                } catch (error) {
+                    console.log(
+                        `ERROR ${errorCount}: cannot transfer: ${error}`
+                    );
+                    errorCount += 1;
+                }
+            });
+            it(`${user} 계정 account 테이블 확인`, async () => {
+                const tableResult = await ledTokenTester.tables.accounts({
+                    scope: user,
+                });
+                if (debug) console.log(`accounts\n${JSON.stringify(tableResult)}`);
+            });
+            it(`dexacnts 테이블에 변경 확인`, async () => {
+                const tableResult = await contractTester.tables.dexacnts({
+                    scope: user,
+                });
+                if (debug) console.log(`Dexacnts\n${JSON.stringify(tableResult)}`);
+            });
+            it(`stats 테이블에 변경 확인`, async () => {
+                const tableResult = await contractTester.tables.stats({
+                    scope: "LEDLEM",
+                });
+                if (debug) console.log(`Stats\n${JSON.stringify(tableResult)}`);
+                expect(tableResult[0]).to.not.undefined;
+            });
+            it(`${user}가 LEM을 이용하여 LED을 획득함`, async () => {
+                try {
+                    const actionResult = await ledTokenTester.actions.transfer(
+                        {
+                            from: user,
+                            to: manager,
+                            quantity: `10.0000 LEM`,
+                            memo: `exchange/LEDLEM/10.0000 LED`
+                        },
+                        [
+                            {
+                                actor: user,
+                                permission: "active",
+                            },
+                        ]
+                    );
+                    expect(actionResult).to.have.all.keys([
+                        "transaction_id",
+                        "processed",
+                    ]);
+                } catch (error) {
+                    console.log(
+                        `ERROR ${errorCount}: cannot transfer: ${error}`
+                    );
+                    errorCount += 1;
+                }
+            });
+            it(`${user} 계정 account 테이블 확인`, async () => {
+                const tableResult = await ledTokenTester.tables.accounts({
+                    scope: user,
+                });
+                if (debug) console.log(`accounts\n${JSON.stringify(tableResult)}`);
+            });
+            it(`dexacnts 테이블에 변경 확인`, async () => {
+                const tableResult = await contractTester.tables.dexacnts({
+                    scope: user,
+                });
+                if (debug) console.log(`Dexacnts\n${JSON.stringify(tableResult)}`);
+            });
+            it(`stats 테이블에 변경 확인`, async () => {
+                const tableResult = await contractTester.tables.stats({
+                    scope: "LEDLEM",
+                });
+                if (debug) console.log(`Stats\n${JSON.stringify(tableResult)}`);
+                expect(tableResult[0]).to.not.undefined;
             });
         });
     }

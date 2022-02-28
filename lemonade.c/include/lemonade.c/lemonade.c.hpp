@@ -179,7 +179,7 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
 
     typedef eosio::multi_index<"bettings"_n, betting> bettings;
 
-    typedef eosio::multi_index<"stat"_n, currency_stats> stats;
+    typedef eosio::multi_index<"stats"_n, currency_stats> stats;
     typedef eosio::multi_index<"accounts"_n, account> accounts;
     typedef eosio::multi_index<"frozens"_n, frozen> frozens;
     typedef eosio::multi_index<

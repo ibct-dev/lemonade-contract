@@ -101,7 +101,7 @@ extended_asset lemonade::process_exch(symbol_code pair_token,
     }
     auto A_in = ext_asset_in.quantity.amount;
     int64_t A_out = compute(-A_in, P_out, P_in + A_in, token->fee);
-    check(min_expected.amount <= -A_out, "available is less than expected");
+    // check(min_expected.amount <= -A_out, "available is less than expected");
     extended_asset ext_asset1, ext_asset2, ext_asset_out;
     if (in_first) {
         ext_asset1 = ext_asset_in;
@@ -186,14 +186,14 @@ void lemonade::inittoken(name user, symbol new_symbol,
 
     if (user != "lemonade.c"_n) {
         auto create_pool_fee =
-            extended_asset{asset(200'0000, symbol("LEM", 4)), get_self()};
+            extended_asset{asset(200'0000, symbol("LEM", 4)), "led.token"_n};
         add_signed_ext_balance(user, -create_pool_fee);
     }
 
     stats statstable(get_self(), new_symbol.code().raw());
     const auto& token = statstable.find(new_symbol.code().raw());
     check(token == statstable.end(), "token symbol already exists");
-    check(initial_fee == DEFAULT_FEE, "initial_fee must be 10");
+    // check(initial_fee == DEFAULT_FEE, "initial_fee must be 10");
     check(fee_contract == "lemonade.c"_n, "fee_contract must be lemonade.c");
 
     statstable.emplace(user, [&](auto& a) {
