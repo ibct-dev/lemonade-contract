@@ -12,9 +12,6 @@ void lemonade::transfer(const name& from, const name& to, const asset& quantity,
 
     require_recipient(from);
     require_recipient(to);
-    if (st.fee_contract)
-        require_recipient(
-            st.fee_contract);  // line added to code from eosio.token
 
     check(quantity.is_valid(), "invalid quantity");
     check(quantity.amount > 0, "must transfer positive quantity");
