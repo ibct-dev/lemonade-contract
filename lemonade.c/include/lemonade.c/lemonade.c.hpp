@@ -26,6 +26,8 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
     const int64_t INIT_MAX = 1000000000000000;  // 10^15
     const int ADD_LIQUIDITY_FEE = 1;
     const int DEFAULT_FEE = 10;
+    const name led_token_contract = "led.token"_n;
+    const bool is_dex_open = false;
 
     const enum Status {
         NOT_STARTED,
@@ -137,8 +139,7 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
         name issuer;
         extended_asset pool1;
         extended_asset pool2;
-        int fee;
-        name fee_contract;
+        asset fee;
         uint64_t primary_key() const { return supply.symbol.code().raw(); }
     };
 
@@ -211,11 +212,11 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
     void add_signed_ext_balance(const name &owner, const extended_asset &value);
     void add_signed_liq(name user, asset to_buy, bool is_buying,
                         asset max_asset1, asset max_asset2);
-    int64_t compute(int64_t x, int64_t y, int64_t z, int fee);
+    int64_t compute(int64_t x, int64_t y, int64_t z);
     extended_asset process_exch(symbol_code evo_token, extended_asset paying,
                                 asset min_expected);
-    void memoexchange(name user, extended_asset ext_asset_in, symbol_code pair_token,
-                      asset min_expected);
+    void memoexchange(name user, extended_asset ext_asset_in,
+                      symbol_code pair_token, asset min_expected);
     void placeindex(name user, symbol lp_symbol, extended_asset pool1,
                     extended_asset pool2);
 
@@ -264,7 +265,7 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
 
     // Initialize Actions
     [[eosio::action]] void init();
-    
+
     [[eosio::action]] void issuelem();
 
     [[eosio::action]] void setbtcprice(const double &price);
@@ -316,9 +317,9 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
     [[eosio::action]] void claimbet(const uint64_t &bet_id);
 
     // DEX Actions
-    [[eosio::action]] void inittoken(
-        name user, symbol new_symbol, extended_asset initial_pool1,
-        extended_asset initial_pool2, int initial_fee, name fee_contract);
+    [[eosio::action]] void inittoken(name user, symbol new_symbol,
+                                     extended_asset initial_pool1,
+                                     extended_asset initial_pool2);
 
     [[eosio::action]] void openext(const name &user,
                                    const extended_symbol &ext_symbol);
@@ -329,16 +330,17 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
                                     extended_asset to_withdraw, string memo);
     [[eosio::action]] void addliquidity(name user, asset to_buy,
                                         asset max_asset1, asset max_asset2);
-    [[eosio::action]] void remliquidity(name user, asset to_sell,
+    [[eosio::action]] void rmliquidity(name user, asset to_sell,
                                         asset min_asset1, asset min_asset2);
     [[eosio::action]] void exchange(name user, symbol_code pair_token,
                                     extended_asset ext_asset_in,
                                     asset min_expected);
-    [[eosio::action]] void changefee(symbol_code pair_token, int newfee);
 
     [[eosio::action]] void indexpair(
         name user,
         symbol lp_symbol);  // This action is only temporarily useful
+
+    [[eosio::action]] void clmpoolreward(name user, string pair_token_symbol);
 
     // On Notify
     [[eosio::on_notify("*::transfer")]] void transfer_event(

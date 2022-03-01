@@ -680,9 +680,11 @@ void lemonade::transfer_event(const name &from, const name &to,
         bet(from, quantity, bet_id, event[2]);
     }
     if (event[0] == "deposit") {
+        check(is_dex_open, "DEX is not open");
         add_signed_ext_balance(from, incoming);
     }
     if (event[0] == "exchange") {
+        check(is_dex_open, "DEX is not open");
         if (event.size() >= 3) {
             symbol_code pair_token = symbol_code(event[1]);
             asset min_expected = asset_from_string(event[2]);

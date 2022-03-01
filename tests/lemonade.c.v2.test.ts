@@ -598,9 +598,7 @@ describe("lemonade.c v2 컨트랙트 테스트", () => {
                             initial_pool2: {
                                 quantity: "100.0000 LEM",
                                 contract: "led.token"
-                            },
-                            initial_fee: 0,
-                            fee_contract: manager
+                            }
                         },
                         [
                             {
@@ -686,7 +684,7 @@ describe("lemonade.c v2 컨트랙트 테스트", () => {
 
             it(`${user}가 LED-LEM풀에 유동성을 회수함`, async () => {
                 try {
-                    const actionResult = await contractTester.actions.remliquidity(
+                    const actionResult = await contractTester.actions.rmliquidity(
                         {
                             user: user,
                             to_sell: "50.0000 LEDLEM",
@@ -816,6 +814,46 @@ describe("lemonade.c v2 컨트랙트 테스트", () => {
                     scope: user,
                 });
                 if (debug) console.log(`Dexacnts\n${JSON.stringify(tableResult)}`);
+            });
+            it(`stats 테이블에 변경 확인`, async () => {
+                const tableResult = await contractTester.tables.stats({
+                    scope: "LEDLEM",
+                });
+                if (debug) console.log(`Stats\n${JSON.stringify(tableResult)}`);
+                expect(tableResult[0]).to.not.undefined;
+            });
+        });
+        describe("clmpoolreward(): 풀 예치 했으면 보상을 받자", async () => {
+            it(`${user}가 LEDLEM풀의 중간보상을 받음`, async () => {
+                try {
+                    const actionResult = await contractTester.actions.clmpoolreward(
+                        {
+                            user: user,
+                            pair_token_symbol: "LEDLEM",
+                        },
+                        [
+                            {
+                                actor: user,
+                                permission: "active",
+                            },
+                        ]
+                    );
+                    expect(actionResult).to.have.all.keys([
+                        "transaction_id",
+                        "processed",
+                    ]);
+                } catch (error) {
+                    console.log(
+                        `ERROR ${errorCount}: cannot transfer: ${error}`
+                    );
+                    errorCount += 1;
+                }
+            });
+            it(`${user} 계정 account 테이블 확인`, async () => {
+                const tableResult = await ledTokenTester.tables.accounts({
+                    scope: user,
+                });
+                if (debug) console.log(`accounts\n${JSON.stringify(tableResult)}`);
             });
             it(`stats 테이블에 변경 확인`, async () => {
                 const tableResult = await contractTester.tables.stats({
