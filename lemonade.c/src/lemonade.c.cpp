@@ -646,15 +646,63 @@ void lemonade::issue_lem() {
     }
 
     asset new_token = asset(secs_since_last_fill * 2'0000, symbol("LEM", 4));
+    led_token_stats stats_table(led_token_contract,
+                                symbol("LEM", 4).code().raw());
+    auto statsIdx = stats_table.get_index<eosio::name("byissuer")>();
+    auto existing_stats = statsIdx.find(get_self().value);
+    check(existing_stats != statsIdx.end(), "lem token not created");
 
-    action(permission_level{get_self(), "active"_n}, "led.token"_n, "issue"_n,
-           make_tuple(get_self(), new_token, string("issue")))
-        .send();
+    if (new_token.amount + existing_stats->supply.amount > LEM_MAX) {
+        new_token =
+            asset(LEM_MAX - existing_stats->supply.amount, symbol("LEM", 4));
+    }
+    print("existing_stats: ", existing_stats->supply.amount, "\n");
 
-    config_table.modify(existing_config, same_payer, [&](config &a) {
-        a.half_life_count = half_life;
-        a.last_lem_bucket_fill = last_issued;
-    });
+    if (new_token.amount > 0) {
+        action(permission_level{get_self(), "active"_n}, "led.token"_n,
+               "issue"_n, make_tuple(get_self(), new_token, string("issue")))
+            .send();
+
+        config_table.modify(existing_config, same_payer, [&](config &a) {
+            a.half_life_count = half_life;
+            a.last_lem_bucket_fill = last_issued;
+        });
+
+        asset to_rc_reward = asset(new_token.amount * 0.3, symbol("LEM", 4));
+        asset to_marketing = asset(new_token.amount * 0.1, symbol("LEM", 4));
+        asset to_team = asset(new_token.amount * 0.05, symbol("LEM", 4));
+        asset to_reserve = asset(new_token.amount * 0.05, symbol("LEM", 4));
+
+        if (to_rc_reward.amount > 0) {
+            action(permission_level{get_self(), "active"_n}, "led.token"_n,
+                   "transfer"_n,
+                   make_tuple(get_self(), rc_reward_account, to_rc_reward,
+                              string("fill bucket to rc reward")))
+                .send();
+        }
+
+        if (to_marketing.amount > 0) {
+            action(permission_level{get_self(), "active"_n}, "led.token"_n,
+                   "transfer"_n,
+                   make_tuple(get_self(), marketing_account, to_marketing,
+                              string("fill bucket to marketing")))
+                .send();
+        }
+        if (to_team.amount > 0) {
+            action(permission_level{get_self(), "active"_n}, "led.token"_n,
+                   "transfer"_n,
+                   make_tuple(get_self(), team_account, to_team,
+                              string("fill bucket to team")))
+                .send();
+        }
+        if (to_reserve.amount > 0) {
+            action(permission_level{get_self(), "active"_n}, "led.token"_n,
+                   "transfer"_n,
+                   make_tuple(get_self(), reserved_account, to_reserve,
+                              string("fill bucket to reserve")))
+                .send();
+        }
+    }
 }
 
 uint32_t lemonade::now() {

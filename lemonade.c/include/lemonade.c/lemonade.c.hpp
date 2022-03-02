@@ -20,13 +20,18 @@ typedef uint64_t id_type;
 
 class [[eosio::contract("lemonade.c")]] lemonade : public contract {
    private:
-    const uint64_t delay_transfer_sec = 1;
+    const uint64_t delay_transfer_sec = secondsPerWeek;
     const double lem_reward_rate = 0.001;  // Reward per sec
     const int64_t MAX = eosio::asset::max_amount;
     const int64_t INIT_MAX = 1000000000000000;  // 10^15
     const int ADD_LIQUIDITY_FEE = 1;
     const int DEFAULT_FEE = 10;
     const name led_token_contract = "led.token"_n;
+    const int64_t LEM_MAX = 220752000'0000;
+    const name rc_reward_account = "rclemonade.p"_n;
+    const name marketing_account = "malemonade.p"_n;
+    const name team_account = "tmlemonade.p"_n;
+    const name reserved_account = "rvlemonade.p"_n;
     const bool is_dex_open = false;
 
     const enum Status {
@@ -165,6 +170,16 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
         checksum256 secondary_key() const { return id_256; }
     };
 
+    // Table from led.token
+    struct [[eosio::table]] led_token_stat {
+        asset supply;
+        asset max_supply;
+        name issuer;
+
+        uint64_t primary_key() const { return supply.symbol.code().raw(); }
+        uint64_t get_issuer() const { return issuer.value; }
+    };
+
     typedef eosio::multi_index<"configs"_n, config> configs;
     typedef eosio::multi_index<
         "products"_n, product,
@@ -193,6 +208,13 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
         indexed_by<"extended"_n, const_mem_fun<index_struct, checksum256,
                                                &index_struct::secondary_key>>>
         lemindexes;
+
+    // Table from led.token
+    typedef eosio::multi_index<
+        "stat"_n, led_token_stat,
+        indexed_by<"byissuer"_n, const_mem_fun<led_token_stat, uint64_t,
+                                               &led_token_stat::get_issuer>>>
+        led_token_stats;
 
     uint32_t now();
     vector<string> memoParser(const string &memo);
@@ -256,12 +278,12 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
     //   cleanTable<bettings>(get_self(), get_self().value);
     // }
 
-    [[eosio::action]] void clearconfig() {
-        require_auth(get_self());
-        printl("cleaning", 8);
+    // [[eosio::action]] void clearconfig() {
+    //     require_auth(get_self());
+    //     printl("cleaning", 8);
 
-        cleanTable<configs>(get_self(), get_self().value);
-    }
+    //     cleanTable<configs>(get_self(), get_self().value);
+    // }
 
     // Initialize Actions
     [[eosio::action]] void init();
@@ -331,7 +353,7 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
     [[eosio::action]] void addliquidity(name user, asset to_buy,
                                         asset max_asset1, asset max_asset2);
     [[eosio::action]] void rmliquidity(name user, asset to_sell,
-                                        asset min_asset1, asset min_asset2);
+                                       asset min_asset1, asset min_asset2);
     [[eosio::action]] void exchange(name user, symbol_code pair_token,
                                     extended_asset ext_asset_in,
                                     asset min_expected);
