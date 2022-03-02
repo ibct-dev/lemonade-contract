@@ -21,6 +21,15 @@ void lemonade::init() {
             a.btc_price = 0;
         });
     }
+
+    configs2 config2_table(get_self(), get_self().value);
+    auto existing_config2 = config2_table.find(0);
+    if (existing_config2 == config2_table.end()) {
+        config2_table.emplace(get_self(), [&](config2 &a) {
+            a.id = config2_table.available_primary_key();
+            a.led_price = 0;
+        });
+    }
 }
 
 void lemonade::issuelem() {
@@ -36,6 +45,16 @@ void lemonade::setbtcprice(const double &price) {
     check(existing_config != config_table.end(), "contract not initialized");
     config_table.modify(existing_config, same_payer,
                         [&](config &a) { a.btc_price = price; });
+}
+
+void lemonade::setledprice(const double &price) {
+    require_auth(get_self());
+
+    configs2 config2_table(get_self(), get_self().value);
+    auto existing_config2 = config2_table.find(0);
+    check(existing_config2 != config2_table.end(), "contract not initialized");
+    config2_table.modify(existing_config2, same_payer,
+                         [&](config2 &a) { a.led_price = price; });
 }
 
 void lemonade::addproduct(const name &product_name, const double &minimum_yield,
@@ -124,6 +143,10 @@ void lemonade::stake(const name &owner, const asset &quantity,
     auto existing_config = config_table.find(0);
     check(existing_config != config_table.end(), "contract not initialized");
 
+    configs2 config2_table(get_self(), get_self().value);
+    auto existing_config2 = config2_table.find(0);
+    check(existing_config2 != config2_table.end(), "contract not initialized");
+
     if (existing_product->amount_per_account.amount != 0) {
         check(existing_product->amount_per_account.amount >= quantity.amount,
               "exceed amount per account limits");
@@ -150,7 +173,7 @@ void lemonade::stake(const name &owner, const asset &quantity,
         check(existing_product->has_prediction,
               "Product doesn't accept price prediction");
         prediction = price_prediction.value();
-        base = existing_config->btc_price;
+        base = existing_config2->led_price;
     }
 
     stakings_table.emplace(get_self(), [&](staking &a) {
@@ -181,6 +204,10 @@ void lemonade::unstake(const name &owner, const name &product_name) {
     auto existing_config = config_table.find(0);
     check(existing_config != config_table.end(), "contract not initialized");
 
+    configs2 config2_table(get_self(), get_self().value);
+    auto existing_config2 = config2_table.find(0);
+    check(existing_config2 != config2_table.end(), "contract not initialized");
+
     products products_table(get_self(), get_self().value);
     auto productIdx = products_table.get_index<eosio::name("byname")>();
     auto existing_product = productIdx.find(product_name.value);
@@ -207,11 +234,11 @@ void lemonade::unstake(const name &owner, const name &product_name) {
     auto yield = existing_staking->current_yield;
     if (existing_product->has_prediction == true) {
         if (existing_staking->price_prediction == "long"_n) {
-            yield = existing_config->btc_price > existing_staking->base_price
+            yield = existing_config2->led_price > existing_staking->base_price
                         ? existing_product->maximum_yield
                         : existing_product->minimum_yield;
         } else if (existing_staking->price_prediction == "short"_n) {
-            yield = existing_config->btc_price > existing_staking->base_price
+            yield = existing_config2->led_price > existing_staking->base_price
                         ? existing_product->minimum_yield
                         : existing_product->maximum_yield;
         }

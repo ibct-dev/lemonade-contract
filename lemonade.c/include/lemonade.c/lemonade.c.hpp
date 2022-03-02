@@ -53,6 +53,15 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
         uint64_t primary_key() const { return id; }
     };
 
+    struct [[eosio::table]] config2 {
+        id_type id;
+        double led_price;
+        uint64_t reserved1;
+        uint64_t reserved2;
+        double reserved3;
+        uint64_t primary_key() const { return id; }
+    };
+
     struct [[eosio::table]] product {
         id_type id;
         name name;
@@ -181,6 +190,8 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
     };
 
     typedef eosio::multi_index<"configs"_n, config> configs;
+    typedef eosio::multi_index<"configs2"_n, config2> configs2;
+
     typedef eosio::multi_index<
         "products"_n, product,
         indexed_by<"byname"_n,
@@ -285,12 +296,21 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
     //     cleanTable<configs>(get_self(), get_self().value);
     // }
 
+    [[eosio::action]] void clearconfig2() {
+        require_auth(get_self());
+        printl("cleaning", 8);
+
+        cleanTable<configs2>(get_self(), get_self().value);
+    }
+
     // Initialize Actions
     [[eosio::action]] void init();
 
     [[eosio::action]] void issuelem();
 
     [[eosio::action]] void setbtcprice(const double &price);
+
+    [[eosio::action]] void setledprice(const double &price);
 
     // Token Actions
     [[eosio::action]] void transfer(const name &from, const name &to,
