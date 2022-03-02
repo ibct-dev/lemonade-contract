@@ -19,6 +19,10 @@ describe("lemonade.c v1 컨트랙트 테스트", () => {
     const manager = "lemonade.c"; // 컨트랙트 배포 계정
     const user = "test.p";
     const anotherUser = "test1.p";
+    const rc_reward_account = "rclemonade.p";
+    const marketing_account = "malemonade.p";
+    const team_account = "tmlemonade.p";
+    const reserved_account = "rvlemonade.p";
     let contractTester: any;
     let ledTokenTester: any;
     let ledTester: any;
@@ -58,6 +62,10 @@ describe("lemonade.c v1 컨트랙트 테스트", () => {
                     ledTester = await bc.getAccount("led");
                     await bc.createAccountByCreator(user, "led");
                     await bc.createAccountByCreator(anotherUser, "led");
+                    await bc.createAccountByCreator(rc_reward_account, "led");
+                    await bc.createAccountByCreator(marketing_account, "led");
+                    await bc.createAccountByCreator(team_account, "led");
+                    await bc.createAccountByCreator(reserved_account, "led");
                 } catch (error) {
                     console.log(
                         `ERROR ${errorCount}: account is already created: ${error}`
@@ -341,8 +349,8 @@ describe("lemonade.c v1 컨트랙트 테스트", () => {
                             has_lem_rewards: false,
                             has_prediction: false,
                             minimum_yield: 1.18, // 18% per year
-                            maximum_yield: 1.18, 
-                            amount_per_account: "0.0000 LED", 
+                            maximum_yield: 1.18,
+                            amount_per_account: "0.0000 LED",
                             maximum_amount_limit: null,
                             duration: null
                         },
@@ -370,7 +378,7 @@ describe("lemonade.c v1 컨트랙트 테스트", () => {
                 const onlyCreated = tableResult[0];
                 expect(onlyCreated).to.deep.include({ name: "normal" });
             });
-            
+
             it(`${manager} 유저가 더미 상품을 생성함`, async () => {
                 try {
                     const actionResult = await contractTester.actions.addproduct(
@@ -379,8 +387,8 @@ describe("lemonade.c v1 컨트랙트 테스트", () => {
                             has_prediction: false,
                             has_lem_rewards: false,
                             minimum_yield: 1.99,
-                            maximum_yield: 1.99, 
-                            amount_per_account: "1.0000 LED", 
+                            maximum_yield: 1.99,
+                            amount_per_account: "1.0000 LED",
                             maximum_amount_limit: null,
                             duration: null
                         },
@@ -417,8 +425,8 @@ describe("lemonade.c v1 컨트랙트 테스트", () => {
                             has_prediction: true,
                             has_lem_rewards: true,
                             minimum_yield: 1.18,
-                            maximum_yield: 1.71, 
-                            amount_per_account: "9000.0000 LED", 
+                            maximum_yield: 1.71,
+                            amount_per_account: "9000.0000 LED",
                             maximum_amount_limit: "11000.0000 LED",
                             duration: 22
                         },
@@ -486,7 +494,7 @@ describe("lemonade.c v1 컨트랙트 테스트", () => {
             });
             it(`${user} 계정 잔액 확인`, async () => {
                 const balance = await bc.rpc.get_currency_balance('led.token', user, 'LED');
-                expect(balance[0]).to.equal(`${initialize-stake}.0000 LED`);
+                expect(balance[0]).to.equal(`${initialize - stake}.0000 LED`);
             });
 
             it(`${user} 유저가 없는 상품에 staking 함`, async () => {
@@ -543,7 +551,7 @@ describe("lemonade.c v1 컨트랙트 테스트", () => {
                         {
                             from: user,
                             to: manager,
-                            quantity: `${stake-2000}.0000 LED`,
+                            quantity: `${stake - 2000}.0000 LED`,
                             memo: `stake/fixed`
                         },
                         [
@@ -570,7 +578,7 @@ describe("lemonade.c v1 컨트랙트 테스트", () => {
                         {
                             from: anotherUser,
                             to: manager,
-                            quantity: `${stake-3000}.0000 LED`,
+                            quantity: `${stake - 3000}.0000 LED`,
                             memo: `stake/fixed`
                         },
                         [
@@ -856,7 +864,7 @@ describe("lemonade.c v1 컨트랙트 테스트", () => {
                     console.log(
                         `ERROR ${errorCount}: cannot changeyield: ${error}`
                     );
-                    errorCount +=1;
+                    errorCount += 1;
                 }
             });
             it(`stakings 테이블에 변경 확인`, async () => {
@@ -887,7 +895,7 @@ describe("lemonade.c v1 컨트랙트 테스트", () => {
                         "processed",
                     ]);
                     const balance = await bc.rpc.get_currency_balance('led.token', user, 'LED');
-                    console.log(balance);    
+                    console.log(balance);
                 } catch (error) {
                     console.log(
                         `ERROR ${errorCount}: cannot unstaking: ${error}`
@@ -971,7 +979,7 @@ describe("lemonade.c v1 컨트랙트 테스트", () => {
                     //     "processed",
                     // ]);
                     const balance = await bc.rpc.get_currency_balance('led.token', user, 'LED');
-                    console.log(balance);    
+                    console.log(balance);
                 } catch (error) {
                     console.log(
                         `ERROR ${errorCount}: cannot unstaking: ${error}`
@@ -995,7 +1003,7 @@ describe("lemonade.c v1 컨트랙트 테스트", () => {
                         {
                             started_at: seconds_since_epoch(Date.now()) + 2,
                             betting_ended_at: seconds_since_epoch(Date.now()) + 7,
-                            ended_at: seconds_since_epoch(Date.now()) + 7, 
+                            ended_at: seconds_since_epoch(Date.now()) + 7,
                         },
                         [
                             {
@@ -1029,8 +1037,8 @@ describe("lemonade.c v1 컨트랙트 테스트", () => {
                 try {
                     const actionResult = await contractTester.actions.setbet(
                         {
-                            bet_id:0,
-                            status:1,
+                            bet_id: 0,
+                            status: 1,
                             base_price: 1.0,
                             final_price: null
                         },
@@ -1052,8 +1060,8 @@ describe("lemonade.c v1 컨트랙트 테스트", () => {
                 try {
                     const actionResult = await contractTester.actions.setbet(
                         {
-                            bet_id:1,
-                            status:1,
+                            bet_id: 1,
+                            status: 1,
                             base_price: 1.0,
                             final_price: null
                         },
@@ -1075,7 +1083,7 @@ describe("lemonade.c v1 컨트랙트 테스트", () => {
                 try {
                     const actionResult = await contractTester.actions.setbet(
                         {
-                            bet_id:0,
+                            bet_id: 0,
                             status: 1,
                             base_price: 1.0,
                             final_price: null
