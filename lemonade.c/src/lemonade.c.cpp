@@ -23,11 +23,13 @@ void lemonade::init() {
     }
 
     configs2 config2_table(get_self(), get_self().value);
-    auto existing_config2 = config2_table.find(0);
-    if (existing_config2 == config2_table.end()) {
+    auto config2Idx = config2_table.get_index<eosio::name("bysymbol")>();
+    auto existing_config2 = config2Idx.find("led"_n.value);
+    if (existing_config2 == config2Idx.end()) {
         config2_table.emplace(get_self(), [&](config2 &a) {
             a.id = config2_table.available_primary_key();
-            a.led_price = 0;
+            a.symbol = "led"_n;
+            a.price = 0;
         });
     }
 }
@@ -51,10 +53,11 @@ void lemonade::setledprice(const double &price) {
     require_auth(get_self());
 
     configs2 config2_table(get_self(), get_self().value);
-    auto existing_config2 = config2_table.find(0);
-    check(existing_config2 != config2_table.end(), "contract not initialized");
-    config2_table.modify(existing_config2, same_payer,
-                         [&](config2 &a) { a.led_price = price; });
+    auto config2Idx = config2_table.get_index<eosio::name("bysymbol")>();
+    auto existing_config2 = config2Idx.find("led"_n.value);
+    check(existing_config2 != config2Idx.end(), "led price not exist");
+    config2Idx.modify(existing_config2, same_payer,
+                         [&](config2 &a) { a.price = price; });
 }
 
 void lemonade::addproduct(const name &product_name, const double &minimum_yield,
@@ -144,8 +147,9 @@ void lemonade::stake(const name &owner, const asset &quantity,
     check(existing_config != config_table.end(), "contract not initialized");
 
     configs2 config2_table(get_self(), get_self().value);
-    auto existing_config2 = config2_table.find(0);
-    check(existing_config2 != config2_table.end(), "contract not initialized");
+    auto config2Idx = config2_table.get_index<eosio::name("bysymbol")>();
+    auto existing_config2 = config2Idx.find("led"_n.value);
+    check(existing_config2 != config2Idx.end(), "led price not exist");
 
     if (existing_product->amount_per_account.amount != 0) {
         check(existing_product->amount_per_account.amount >= quantity.amount,
@@ -173,7 +177,7 @@ void lemonade::stake(const name &owner, const asset &quantity,
         check(existing_product->has_prediction,
               "Product doesn't accept price prediction");
         prediction = price_prediction.value();
-        base = existing_config2->led_price;
+        base = existing_config2->price;
     }
 
     stakings_table.emplace(get_self(), [&](staking &a) {
@@ -205,8 +209,9 @@ void lemonade::unstake(const name &owner, const name &product_name) {
     check(existing_config != config_table.end(), "contract not initialized");
 
     configs2 config2_table(get_self(), get_self().value);
-    auto existing_config2 = config2_table.find(0);
-    check(existing_config2 != config2_table.end(), "contract not initialized");
+    auto config2Idx = config2_table.get_index<eosio::name("bysymbol")>();
+    auto existing_config2 = config2Idx.find("led"_n.value);
+    check(existing_config2 != config2Idx.end(), "led price not exist");
 
     products products_table(get_self(), get_self().value);
     auto productIdx = products_table.get_index<eosio::name("byname")>();
@@ -234,11 +239,11 @@ void lemonade::unstake(const name &owner, const name &product_name) {
     auto yield = existing_staking->current_yield;
     if (existing_product->has_prediction == true) {
         if (existing_staking->price_prediction == "long"_n) {
-            yield = existing_config2->led_price > existing_staking->base_price
+            yield = existing_config2->price > existing_staking->base_price
                         ? existing_product->maximum_yield
                         : existing_product->minimum_yield;
         } else if (existing_staking->price_prediction == "short"_n) {
-            yield = existing_config2->led_price > existing_staking->base_price
+            yield = existing_config2->price > existing_staking->base_price
                         ? existing_product->minimum_yield
                         : existing_product->maximum_yield;
         }
