@@ -55,11 +55,10 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
 
     struct [[eosio::table]] config2 {
         id_type id;
-        double led_price;
-        uint64_t reserved1;
-        uint64_t reserved2;
-        double reserved3;
+        name symbol;
+        double price;
         uint64_t primary_key() const { return id; }
+        uint64_t get_symbol() const { return symbol.value; }
     };
 
     struct [[eosio::table]] product {
@@ -190,7 +189,11 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
     };
 
     typedef eosio::multi_index<"configs"_n, config> configs;
-    typedef eosio::multi_index<"configs2"_n, config2> configs2;
+    typedef eosio::multi_index<
+        "configs2"_n, config2,
+        indexed_by<"bysymbol"_n,
+                   const_mem_fun<config2, uint64_t, &config2::get_symbol>>>
+        configs2;
 
     typedef eosio::multi_index<
         "products"_n, product,
