@@ -605,7 +605,7 @@ void lemonade::claimbet(const uint64_t &bet_id) {
     if (existing_betting->long_betters.size() == 0 ||
         existing_betting->short_betters.size() == 0) {
         if (existing_betting->long_betters.size() == 0) {
-            for (auto k : existing_betting->long_betters) {
+            for (auto k : existing_betting->short_betters) {
                 action(permission_level{get_self(), "active"_n}, "led.token"_n,
                        "transfer"_n,
                        make_tuple(get_self(), k.first, k.second,
@@ -615,7 +615,7 @@ void lemonade::claimbet(const uint64_t &bet_id) {
             }
         }
         if (existing_betting->short_betters.size() == 0) {
-            for (auto k : existing_betting->short_betters) {
+            for (auto k : existing_betting->long_betters) {
                 action(permission_level{get_self(), "active"_n}, "led.token"_n,
                        "transfer"_n,
                        make_tuple(get_self(), k.first, k.second,
