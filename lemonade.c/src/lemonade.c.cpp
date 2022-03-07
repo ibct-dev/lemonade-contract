@@ -57,7 +57,7 @@ void lemonade::setledprice(const double &price) {
     auto existing_config2 = config2Idx.find("led"_n.value);
     check(existing_config2 != config2Idx.end(), "led price not exist");
     config2Idx.modify(existing_config2, same_payer,
-                         [&](config2 &a) { a.price = price; });
+                      [&](config2 &a) { a.price = price; });
 }
 
 void lemonade::addproduct(const name &product_name, const double &minimum_yield,
@@ -624,6 +624,8 @@ void lemonade::claimbet(const uint64_t &bet_id) {
                     .send();
             }
         }
+        bettings_table.modify(existing_betting, same_payer,
+                              [&](betting &a) { a.status = Status::NO_GAME; });
     }
     // Betting both side -> claim for winner
     else {
@@ -660,10 +662,9 @@ void lemonade::claimbet(const uint64_t &bet_id) {
                                   string("game!")))
                 .send();
         }
+        bettings_table.modify(existing_betting, same_payer,
+                              [&](betting &a) { a.status = Status::FINISHED; });
     }
-
-    bettings_table.modify(existing_betting, same_payer,
-                          [&](betting &a) { a.status = Status::FINISHED; });
 }
 
 void lemonade::issue_lem() {

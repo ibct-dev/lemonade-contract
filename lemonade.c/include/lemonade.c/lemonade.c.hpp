@@ -39,7 +39,8 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
         IS_LIVE,
         BETTING_FINISH,
         NOT_CLAIMED,
-        FINISHED
+        FINISHED,
+        NO_GAME
     };
 
     struct [[eosio::table]] config {
