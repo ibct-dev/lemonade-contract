@@ -57,7 +57,7 @@ void lemonade::setledprice(const double &price) {
     auto existing_config2 = config2Idx.find("led"_n.value);
     check(existing_config2 != config2Idx.end(), "led price not exist");
     config2Idx.modify(existing_config2, same_payer,
-                         [&](config2 &a) { a.price = price; });
+                      [&](config2 &a) { a.price = price; });
 }
 
 void lemonade::addproduct(const name &product_name, const double &minimum_yield,
@@ -477,6 +477,10 @@ void lemonade::setbet(const uint64_t bet_id, const uint8_t &status,
                       const optional<double> &final_price) {
     require_auth(get_self());
 
+    configs config_table(get_self(), get_self().value);
+    auto existing_config = config_table.find(0);
+    check(existing_config != config_table.end(), "contract not initialized");
+
     bettings bettings_table(get_self(), get_self().value);
     auto existing_betting = bettings_table.find(bet_id);
     check(existing_betting != bettings_table.end(), "game does not exist");
@@ -503,9 +507,38 @@ void lemonade::setbet(const uint64_t bet_id, const uint8_t &status,
               "game status has wrong value");
         check(existing_betting->betting_ended_at <= now(),
               "the betting end time has not passed.");
-
-        bettings_table.modify(existing_betting, same_payer,
-                              [&](betting &a) { a.status = status; });
+        // Betting one side only -> refund them all
+        if (existing_betting->long_betters.size() == 0 ||
+            existing_betting->short_betters.size() == 0) {
+            if (existing_betting->long_betters.size() == 0) {
+                for (auto k : existing_betting->short_betters) {
+                    action(permission_level{get_self(), "active"_n},
+                           "led.token"_n, "transfer"_n,
+                           make_tuple(get_self(), k.first, k.second,
+                                      string("refund ") + to_string(bet_id) +
+                                          string("game, game not started")))
+                        .send();
+                }
+            }
+            if (existing_betting->short_betters.size() == 0) {
+                for (auto k : existing_betting->long_betters) {
+                    action(permission_level{get_self(), "active"_n},
+                           "led.token"_n, "transfer"_n,
+                           make_tuple(get_self(), k.first, k.second,
+                                      string("refund ") + to_string(bet_id) +
+                                          string("game, game not started")))
+                        .send();
+                }
+            }
+            bettings_table.modify(existing_betting, same_payer,
+                                  [&](betting &a) {
+                                      a.status = Status::NO_GAME;
+                                      a.final_price = existing_config->btc_price;
+                                  });
+        } else {
+            bettings_table.modify(existing_betting, same_payer,
+                                  [&](betting &a) { a.status = status; });
+        }
     }
     if (status == Status::NOT_CLAIMED) {
         check(existing_betting->get_status() == Status::BETTING_FINISH,
@@ -604,26 +637,30 @@ void lemonade::claimbet(const uint64_t &bet_id) {
     // Betting one side only -> refund them all
     if (existing_betting->long_betters.size() == 0 ||
         existing_betting->short_betters.size() == 0) {
-        if (existing_betting->long_betters.size() == 0) {
-            for (auto k : existing_betting->long_betters) {
-                action(permission_level{get_self(), "active"_n}, "led.token"_n,
-                       "transfer"_n,
-                       make_tuple(get_self(), k.first, k.second,
-                                  string("refund ") + to_string(bet_id) +
-                                      string("game, game not started")))
-                    .send();
-            }
-        }
-        if (existing_betting->short_betters.size() == 0) {
-            for (auto k : existing_betting->short_betters) {
-                action(permission_level{get_self(), "active"_n}, "led.token"_n,
-                       "transfer"_n,
-                       make_tuple(get_self(), k.first, k.second,
-                                  string("refund ") + to_string(bet_id) +
-                                      string("game, game not started")))
-                    .send();
-            }
-        }
+        // if (existing_betting->long_betters.size() == 0) {
+        //     for (auto k : existing_betting->short_betters) {
+        //         action(permission_level{get_self(), "active"_n},
+        //         "led.token"_n,
+        //                "transfer"_n,
+        //                make_tuple(get_self(), k.first, k.second,
+        //                           string("refund ") + to_string(bet_id) +
+        //                               string("game, game not started")))
+        //             .send();
+        //     }
+        // }
+        // if (existing_betting->short_betters.size() == 0) {
+        //     for (auto k : existing_betting->long_betters) {
+        //         action(permission_level{get_self(), "active"_n},
+        //         "led.token"_n,
+        //                "transfer"_n,
+        //                make_tuple(get_self(), k.first, k.second,
+        //                           string("refund ") + to_string(bet_id) +
+        //                               string("game, game not started")))
+        //             .send();
+        //     }
+        // }
+        bettings_table.modify(existing_betting, same_payer,
+                              [&](betting &a) { a.status = Status::NO_GAME; });
     }
     // Betting both side -> claim for winner
     else {
@@ -648,8 +685,8 @@ void lemonade::claimbet(const uint64_t &bet_id) {
         }
 
         for (auto k : winners) {
-            const asset price =
-                asset(k.second.amount * dividend, k.second.symbol);
+            const asset price = asset(
+                k.second.amount + k.second.amount * dividend, k.second.symbol);
             if (price.amount == 0) {
                 continue;
             }
@@ -660,10 +697,9 @@ void lemonade::claimbet(const uint64_t &bet_id) {
                                   string("game!")))
                 .send();
         }
+        bettings_table.modify(existing_betting, same_payer,
+                              [&](betting &a) { a.status = Status::FINISHED; });
     }
-
-    bettings_table.modify(existing_betting, same_payer,
-                          [&](betting &a) { a.status = Status::FINISHED; });
 }
 
 void lemonade::issue_lem() {
