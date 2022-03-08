@@ -472,9 +472,7 @@ void lemonade::rmbet(const uint64_t bet_id) {
     bettings_table.erase(existing_betting);
 }
 
-void lemonade::setbet(const uint64_t bet_id, const uint8_t &status,
-                      const optional<double> &base_price,
-                      const optional<double> &final_price) {
+void lemonade::setbet(const uint64_t bet_id, const uint8_t &status) {
     require_auth(get_self());
 
     configs config_table(get_self(), get_self().value);
@@ -492,10 +490,8 @@ void lemonade::setbet(const uint64_t bet_id, const uint8_t &status,
               "game status has wrong value");
         check(existing_betting->started_at <= now(),
               "the start time has not passed.");
-        check(base_price.has_value(),
-              "when you change status to live, you must give base_price");
 
-        double base = base_price.value();
+        double base = existing_config->btc_price;
 
         bettings_table.modify(existing_betting, same_payer, [&](betting &a) {
             a.status = status;
@@ -545,10 +541,8 @@ void lemonade::setbet(const uint64_t bet_id, const uint8_t &status,
               "game status has wrong value");
         check(existing_betting->ended_at <= now(),
               "the end time has not passed.");
-        check(final_price.has_value(),
-              "when you change status to live, you must give final_price");
 
-        double finalPrice = final_price.value();
+        double finalPrice = existing_config->btc_price;
 
         bettings_table.modify(existing_betting, same_payer, [&](betting &a) {
             a.status = status;
