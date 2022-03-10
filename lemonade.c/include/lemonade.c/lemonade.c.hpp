@@ -354,9 +354,7 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
                                      const uint32_t &betting_ended_at,
                                      const uint32_t &ended_at);
 
-    [[eosio::action]] void setbet(const uint64_t bet_id, const uint8_t &status,
-                                  const optional<double> &base_price,
-                                  const optional<double> &final_price);
+    [[eosio::action]] void setbet(const uint64_t bet_id, const uint8_t &status);
 
     [[eosio::action]] void rmbet(const uint64_t bet_id);
 
