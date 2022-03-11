@@ -526,11 +526,11 @@ void lemonade::setbet(const uint64_t bet_id, const uint8_t &status) {
                         .send();
                 }
             }
-            bettings_table.modify(existing_betting, same_payer,
-                                  [&](betting &a) {
-                                      a.status = Status::NO_GAME;
-                                      a.final_price = existing_config->btc_price;
-                                  });
+            bettings_table.modify(
+                existing_betting, same_payer, [&](betting &a) {
+                    a.status = Status::NO_GAME;
+                    a.final_price = existing_config->btc_price;
+                });
         } else {
             bettings_table.modify(existing_betting, same_payer,
                                   [&](betting &a) { a.status = status; });
@@ -584,11 +584,11 @@ void lemonade::bet(const name &owner, const asset &quantity,
         new_long_amount += quantity;
         if (existing_betting->short_betting_amount.amount != 0) {
             short_dividend =
-                ((new_short_amount.amount + new_long_amount.amount) /
-                 new_short_amount.amount * betting_ratio);
+                ((double)(new_short_amount.amount + new_long_amount.amount) /
+                 (double)new_short_amount.amount * betting_ratio);
         }
-        long_dividend = ((new_short_amount.amount + new_long_amount.amount) /
-                         new_long_amount.amount * betting_ratio);
+        long_dividend = ((double)(new_short_amount.amount + new_long_amount.amount) /
+                         (double)new_long_amount.amount * betting_ratio);
 
         bettings_table.modify(existing_betting, same_payer, [&](betting &a) {
             a.short_betting_amount = new_short_amount;
@@ -600,12 +600,12 @@ void lemonade::bet(const name &owner, const asset &quantity,
     }
     if (position == "short") {
         new_short_amount += quantity;
-        short_dividend = ((new_short_amount.amount + new_long_amount.amount) /
-                          new_short_amount.amount * betting_ratio);
+        short_dividend = ((double)(new_short_amount.amount + new_long_amount.amount) /
+                          (double)new_short_amount.amount * betting_ratio);
         if (existing_betting->long_betting_amount.amount != 0) {
             long_dividend =
-                ((new_short_amount.amount + new_long_amount.amount) /
-                 new_long_amount.amount * betting_ratio);
+                ((double)(new_short_amount.amount + new_long_amount.amount) /
+                 (double)new_long_amount.amount * betting_ratio);
         }
         bettings_table.modify(existing_betting, same_payer, [&](betting &a) {
             a.short_betting_amount = new_short_amount;
