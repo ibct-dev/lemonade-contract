@@ -680,7 +680,7 @@ void lemonade::claimbet(const uint64_t &bet_id) {
 
         for (auto k : winners) {
             const asset price = asset(
-                k.second.amount + k.second.amount * dividend, k.second.symbol);
+                k.second.amount * dividend, k.second.symbol);
             if (price.amount == 0) {
                 continue;
             }
