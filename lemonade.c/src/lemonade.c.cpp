@@ -587,8 +587,9 @@ void lemonade::bet(const name &owner, const asset &quantity,
                 ((double)(new_short_amount.amount + new_long_amount.amount) /
                  (double)new_short_amount.amount * betting_ratio);
         }
-        long_dividend = ((double)(new_short_amount.amount + new_long_amount.amount) /
-                         (double)new_long_amount.amount * betting_ratio);
+        long_dividend =
+            ((double)(new_short_amount.amount + new_long_amount.amount) /
+             (double)new_long_amount.amount * betting_ratio);
 
         bettings_table.modify(existing_betting, same_payer, [&](betting &a) {
             a.short_betting_amount = new_short_amount;
@@ -600,8 +601,9 @@ void lemonade::bet(const name &owner, const asset &quantity,
     }
     if (position == "short") {
         new_short_amount += quantity;
-        short_dividend = ((double)(new_short_amount.amount + new_long_amount.amount) /
-                          (double)new_short_amount.amount * betting_ratio);
+        short_dividend =
+            ((double)(new_short_amount.amount + new_long_amount.amount) /
+             (double)new_short_amount.amount * betting_ratio);
         if (existing_betting->long_betting_amount.amount != 0) {
             long_dividend =
                 ((double)(new_short_amount.amount + new_long_amount.amount) /
@@ -619,6 +621,7 @@ void lemonade::bet(const name &owner, const asset &quantity,
 
 void lemonade::claimbet(const uint64_t &bet_id) {
     require_auth(get_self());
+    const double betting_ratio = 0.95;
 
     bettings bettings_table(get_self(), get_self().value);
     auto existing_betting = bettings_table.find(bet_id);
@@ -627,60 +630,39 @@ void lemonade::claimbet(const uint64_t &bet_id) {
     check(existing_betting->get_status() == Status::NOT_CLAIMED,
           "game is not finished");
     check(existing_betting->ended_at <= now(), "betting is not over");
+    check(existing_betting->long_betters.size() != 0 &&
+              existing_betting->short_betters.size() != 0,
+          "no betters");
 
-    // Betting one side only -> refund them all
-    if (existing_betting->long_betters.size() == 0 ||
-        existing_betting->short_betters.size() == 0) {
-        // if (existing_betting->long_betters.size() == 0) {
-        //     for (auto k : existing_betting->short_betters) {
-        //         action(permission_level{get_self(), "active"_n},
-        //         "led.token"_n,
-        //                "transfer"_n,
-        //                make_tuple(get_self(), k.first, k.second,
-        //                           string("refund ") + to_string(bet_id) +
-        //                               string("game, game not started")))
-        //             .send();
-        //     }
-        // }
-        // if (existing_betting->short_betters.size() == 0) {
-        //     for (auto k : existing_betting->long_betters) {
-        //         action(permission_level{get_self(), "active"_n},
-        //         "led.token"_n,
-        //                "transfer"_n,
-        //                make_tuple(get_self(), k.first, k.second,
-        //                           string("refund ") + to_string(bet_id) +
-        //                               string("game, game not started")))
-        //             .send();
-        //     }
-        // }
-        bettings_table.modify(existing_betting, same_payer,
-                              [&](betting &a) { a.status = Status::NO_GAME; });
-    }
     // Betting both side -> claim for winner
-    else {
+    {
+        uint64_t winners_total;
+        uint64_t losers_total;
         vector<pair<name, asset>> winners;
         double dividend;
         string win_position =
-            existing_betting->base_price > existing_betting->final_price
+            existing_betting->base_price >= existing_betting->final_price
                 ? "short"
                 : "long";
-
-        if (existing_betting->base_price == existing_betting->final_price) {
-            win_position = "none";
-        }
 
         if (win_position == "long") {
             winners = existing_betting->long_betters;
             dividend = existing_betting->long_dividend;
+            winners_total = existing_betting->long_betting_amount.amount;
+            losers_total = existing_betting->short_betting_amount.amount;
         }
         if (win_position == "short") {
             winners = existing_betting->short_betters;
             dividend = existing_betting->short_dividend;
+            losers_total = existing_betting->long_betting_amount.amount;
+            winners_total = existing_betting->short_betting_amount.amount;
         }
 
         for (auto k : winners) {
-            const asset price = asset(
-                k.second.amount * dividend, k.second.symbol);
+            const asset price =
+                asset(k.second.amount + k.second.amount * losers_total /
+                                            winners_total * betting_ratio,
+                      k.second.symbol);
             if (price.amount == 0) {
                 continue;
             }
