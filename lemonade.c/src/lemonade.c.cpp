@@ -658,21 +658,37 @@ void lemonade::claimbet(const uint64_t &bet_id) {
             winners_total = existing_betting->short_betting_amount.amount;
         }
 
-        for (auto k : winners) {
-            const asset price =
-                asset(k.second.amount + k.second.amount * losers_total /
-                                            winners_total * betting_ratio,
-                      k.second.symbol);
-            if (price.amount == 0) {
-                continue;
+        if (winners_total < losers_total) {
+            for (auto k : winners) {
+                const asset price = asset(k.second.amount * 2, k.second.symbol);
+                if (price.amount == 0) {
+                    continue;
+                }
+                action(permission_level{get_self(), "active"_n}, "led.token"_n,
+                       "transfer"_n,
+                       make_tuple(get_self(), k.first, price,
+                                  string("winner of ") + to_string(bet_id) +
+                                      string("game!")))
+                    .send();
             }
-            action(permission_level{get_self(), "active"_n}, "led.token"_n,
-                   "transfer"_n,
-                   make_tuple(get_self(), k.first, price,
-                              string("winner of ") + to_string(bet_id) +
-                                  string("game!")))
-                .send();
+        } else {
+            for (auto k : winners) {
+                const asset price =
+                    asset(k.second.amount + k.second.amount * losers_total /
+                                                winners_total * betting_ratio,
+                          k.second.symbol);
+                if (price.amount == 0) {
+                    continue;
+                }
+                action(permission_level{get_self(), "active"_n}, "led.token"_n,
+                       "transfer"_n,
+                       make_tuple(get_self(), k.first, price,
+                                  string("winner of ") + to_string(bet_id) +
+                                      string("game!")))
+                    .send();
+            }
         }
+
         bettings_table.modify(existing_betting, same_payer,
                               [&](betting &a) { a.status = Status::FINISHED; });
     }
