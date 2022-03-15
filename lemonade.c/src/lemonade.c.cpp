@@ -227,6 +227,10 @@ void lemonade::unstake(const name &owner, const name &product_name) {
         check(existing_staking->ended_at <= now(),
               "account end time is not over");
     }
+    if (existing_staking->ended_at == 0) {
+        check(existing_staking->started_at + secondsPerDay <= now(),
+              "account end time is not over");
+    }
 
     // issue new LEM
     issue_lem();
