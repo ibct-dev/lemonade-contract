@@ -728,7 +728,7 @@ void lemonade::issue_lem() {
 
         config_table.modify(existing_config, same_payer, [&](config &a) {
             a.half_life_count = half_life;
-            a.last_lem_bucket_fill = last_issued;
+            a.last_lem_bucket_fill = current;
         });
 
         asset to_rc_reward = asset(new_token.amount * 0.3, symbol("LEM", 4));
