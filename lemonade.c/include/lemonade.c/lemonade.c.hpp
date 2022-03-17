@@ -32,7 +32,7 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
     const name marketing_account = "malemonade.p"_n;
     const name team_account = "tmlemonade.p"_n;
     const name reserved_account = "rvlemonade.p"_n;
-    const bool is_dex_open = false;
+    const bool is_dex_open = true;
 
     const enum Status {
         NOT_STARTED,

@@ -156,7 +156,7 @@ extended_asset lemonade::process_exch(symbol_code pair_token,
     }
     auto A_in = ext_asset_in.quantity.amount;
     int64_t A_out = compute(-A_in, P_out, P_in + A_in);
-    // check(min_expected.amount <= -A_out, "available is less than expected");
+    check(min_expected.amount <= -A_out, "available is less than expected");
     extended_asset ext_asset1, ext_asset2, ext_asset_out;
     if (in_first) {
         ext_asset1 = ext_asset_in;
