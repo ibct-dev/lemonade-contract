@@ -80,12 +80,31 @@ void lemonade::exchange(name user, symbol_code pair_token,
                         extended_asset ext_asset_in, asset min_expected) {
     check(is_dex_open, "DEX is not open");
     require_auth(user);
+    stats statstable(get_self(), pair_token.raw());
+    const auto& token = statstable.find(pair_token.raw());
+    check(token != statstable.end(), "pair token does not exist");
     check(
         ((ext_asset_in.quantity.amount > 0) && (min_expected.amount >= 0)) ||
             ((ext_asset_in.quantity.amount < 0) && (min_expected.amount <= 0)),
         "ext_asset_in must be nonzero and min_expected must have same sign or "
         "be zero");
+
     auto ext_asset_out = process_exch(pair_token, ext_asset_in, min_expected);
+
+    // TODO: fee policy is 0.2% LED
+    int64_t amount = 1;
+    if(ext_asset_in.quantity.symbol == symbol("LED", 4)){
+        amount = ext_asset_in.quantity.amount * 0.002 > 0 ? ext_asset_in.quantity.amount * 0.002 : 1;
+    }
+    else if(ext_asset_out.quantity.symbol == symbol("LED", 4)){
+        amount = ext_asset_out.quantity.amount * 0.002 > 0 ? ext_asset_out.quantity.amount * 0.002 : 1;
+    }
+    asset ledfee = asset(amount, symbol("LED", 4));
+    extended_asset fee = extended_asset{ledfee, led_token_contract};
+    add_signed_ext_balance(user, -fee);
+
+    statstable.modify(token, same_payer, [&](auto& a) { a.fee += ledfee; });
+
     add_signed_ext_balance(user, -ext_asset_in);
     add_signed_ext_balance(user, ext_asset_out);
 }
@@ -198,8 +217,14 @@ void lemonade::memoexchange(name user, extended_asset ext_asset_in,
     stats statstable(get_self(), pair_token.raw());
     const auto& token = statstable.find(pair_token.raw());
     check(token != statstable.end(), "pair token does not exist");
-    // TODO: when fee policy is fixed, need to change amount
+    // TODO: fee policy is 0.2% LED
     int64_t amount = 1;
+    if(ext_asset_in.quantity.symbol == symbol("LED", 4)){
+        amount = ext_asset_in.quantity.amount * 0.002 > 0 ? ext_asset_in.quantity.amount * 0.002 : 1;
+    }
+    else if(ext_asset_out.quantity.symbol == symbol("LED", 4)){
+        amount = ext_asset_out.quantity.amount * 0.002 > 0 ? ext_asset_out.quantity.amount * 0.002 : 1;
+    }
     asset ledfee = asset(amount, symbol("LED", 4));
     extended_asset fee = extended_asset{ledfee, led_token_contract};
     add_signed_ext_balance(user, -fee);
