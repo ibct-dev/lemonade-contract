@@ -93,11 +93,14 @@ void lemonade::exchange(name user, symbol_code pair_token,
 
     // TODO: fee policy is 0.2% LED
     int64_t amount = 1;
-    if(ext_asset_in.quantity.symbol == symbol("LED", 4)){
-        amount = ext_asset_in.quantity.amount * 0.002 > 0 ? ext_asset_in.quantity.amount * 0.002 : 1;
-    }
-    else if(ext_asset_out.quantity.symbol == symbol("LED", 4)){
-        amount = ext_asset_out.quantity.amount * 0.002 > 0 ? ext_asset_out.quantity.amount * 0.002 : 1;
+    if (ext_asset_in.quantity.symbol == symbol("LED", 4)) {
+        amount = ext_asset_in.quantity.amount * 0.002 > 0
+                     ? ext_asset_in.quantity.amount * 0.002
+                     : 1;
+    } else if (ext_asset_out.quantity.symbol == symbol("LED", 4)) {
+        amount = ext_asset_out.quantity.amount * 0.002 > 0
+                     ? ext_asset_out.quantity.amount * 0.002
+                     : 1;
     }
     asset ledfee = asset(amount, symbol("LED", 4));
     extended_asset fee = extended_asset{ledfee, led_token_contract};
@@ -219,11 +222,14 @@ void lemonade::memoexchange(name user, extended_asset ext_asset_in,
     check(token != statstable.end(), "pair token does not exist");
     // TODO: fee policy is 0.2% LED
     int64_t amount = 1;
-    if(ext_asset_in.quantity.symbol == symbol("LED", 4)){
-        amount = ext_asset_in.quantity.amount * 0.002 > 0 ? ext_asset_in.quantity.amount * 0.002 : 1;
-    }
-    else if(ext_asset_out.quantity.symbol == symbol("LED", 4)){
-        amount = ext_asset_out.quantity.amount * 0.002 > 0 ? ext_asset_out.quantity.amount * 0.002 : 1;
+    if (ext_asset_in.quantity.symbol == symbol("LED", 4)) {
+        amount = ext_asset_in.quantity.amount * 0.002 > 0
+                     ? ext_asset_in.quantity.amount * 0.002
+                     : 1;
+    } else if (ext_asset_out.quantity.symbol == symbol("LED", 4)) {
+        amount = ext_asset_out.quantity.amount * 0.002 > 0
+                     ? ext_asset_out.quantity.amount * 0.002
+                     : 1;
     }
     asset ledfee = asset(amount, symbol("LED", 4));
     extended_asset fee = extended_asset{ledfee, led_token_contract};
@@ -280,6 +286,33 @@ void lemonade::inittoken(name user, symbol new_symbol,
         a.pool1 = initial_pool1;
         a.pool2 = initial_pool2;
         a.fee = asset(0, symbol("LED", 4));
+    });
+
+    swap_lists listtable1(get_self(),
+                          initial_pool1.quantity.symbol.code().raw());
+    const auto& token1 =
+        listtable1.find(initial_pool2.quantity.symbol.code().raw());
+    check(token1 == listtable1.end(), "token symbol already exists");
+    listtable1.emplace(get_self(), [&](auto& a) {
+        a.pair_symbol = initial_pool2.quantity.symbol;
+    });
+
+    swap_lists listtable2(get_self(),
+                          initial_pool2.quantity.symbol.code().raw());
+    const auto& token2 =
+        listtable2.find(initial_pool1.quantity.symbol.code().raw());
+    check(token2 == listtable2.end(), "token symbol already exists");
+    listtable2.emplace(get_self(), [&](auto& a) {
+        a.pair_symbol = initial_pool1.quantity.symbol;
+    });
+
+    pool_lists poollisttable(get_self(), get_self().value);
+    const auto& poollist = poollisttable.find(new_symbol.code().raw());
+    check(poollist == poollisttable.end(), "token symbol already exists");
+    poollisttable.emplace(get_self(), [&](auto& a) {
+        a.lp_symbol = new_symbol;
+        a.symbol1 = initial_pool1.quantity.symbol;
+        a.symbol2 = initial_pool2.quantity.symbol;
     });
 
     placeindex(user, new_symbol, initial_pool1, initial_pool2);
@@ -367,6 +400,31 @@ void lemonade::add_signed_ext_balance(const name& user,
         });
     }
 }
+
+// void lemonade::test() {
+//     auto symbol1 = symbol("LED", 4);
+//     auto symbol2 = symbol("LEM", 4);
+//     auto symbol3 = symbol("LEDLEM", 4);
+
+//     swap_lists listtable1(get_self(), symbol1.code().raw());
+//     const auto& token1 = listtable1.find(symbol2.code().raw());
+//     check(token1 == listtable1.end(), "token symbol already exists");
+//     listtable1.emplace(get_self(), [&](auto& a) { a.pair_symbol = symbol2; });
+
+//     swap_lists listtable2(get_self(), symbol2.code().raw());
+//     const auto& token2 = listtable2.find(symbol1.code().raw());
+//     check(token2 == listtable2.end(), "token symbol already exists");
+//     listtable2.emplace(get_self(), [&](auto& a) { a.pair_symbol = symbol1; });
+
+//     pool_lists tt(get_self(), get_self().value);
+//     const auto& aa = tt.find(symbol3.code().raw());
+//     check(aa == tt.end(), "token symbol already exists");
+//     tt.emplace(get_self(), [&](auto& a) {
+//         a.lp_symbol = symbol3;
+//         a.symbol1 = symbol1;
+//         a.symbol2 = symbol2;
+//     });
+// }
 
 uint128_t lemonade::make128key(uint64_t a, uint64_t b) {
     uint128_t aa = a;

@@ -157,6 +157,18 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
         uint64_t primary_key() const { return supply.symbol.code().raw(); }
     };
 
+    struct [[eosio::table]] swap_list {
+        symbol pair_symbol;
+        uint64_t primary_key() const { return pair_symbol.code().raw(); }
+    };
+
+    struct [[eosio::table]] pool_list {
+        symbol lp_symbol;
+        symbol symbol1;
+        symbol symbol2;
+        uint64_t primary_key() const { return lp_symbol.code().raw(); }
+    };
+
     struct [[eosio::table]] frozen {
         name freezer;
         uint64_t primary_key() const { return freezer.value; }
@@ -211,6 +223,8 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
     typedef eosio::multi_index<"bettings"_n, betting> bettings;
 
     typedef eosio::multi_index<"stats"_n, currency_stats> stats;
+    typedef eosio::multi_index<"swaplists"_n, swap_list> swap_lists;
+    typedef eosio::multi_index<"poollists"_n, pool_list> pool_lists;
     typedef eosio::multi_index<"accounts"_n, account> accounts;
     typedef eosio::multi_index<"frozens"_n, frozen> frozens;
     typedef eosio::multi_index<
@@ -300,12 +314,23 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
     //     cleanTable<configs>(get_self(), get_self().value);
     // }
 
-    [[eosio::action]] void clearconfig2() {
-        require_auth(get_self());
-        printl("cleaning", 8);
+    // [[eosio::action]] void clearconfig2() {
+    //     require_auth(get_self());
+    //     printl("cleaning", 8);
 
-        cleanTable<configs2>(get_self(), get_self().value);
-    }
+    //     cleanTable<configs2>(get_self(), get_self().value);
+    // }
+    // [[eosio::action]] void clearlist() {
+    //     auto symbol1 = symbol("LED", 4);
+    //     auto symbol2 = symbol("LEM", 4);
+    //     require_auth(get_self());
+    //     printl("cleaning", 8);
+
+    //     cleanTable<pool_lists>(get_self(), symbol1.code().raw());
+    //     cleanTable<pool_lists>(get_self(), symbol2.code().raw());
+    // }
+
+    // [[eosio::action]] void test();
 
     // Initialize Actions
     [[eosio::action]] void init();
