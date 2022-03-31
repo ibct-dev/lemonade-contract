@@ -76,6 +76,44 @@ void lemonade::rmliquidity(name user, asset to_sell, asset min_asset1,
     add_signed_liq(user, -to_sell, false, -min_asset1, -min_asset2);
 }
 
+void lemonade::exchangeall(name user, symbol_code pair_token,
+                           extended_symbol asset_in) {
+    check(is_dex_open, "DEX is not open");
+    require_auth(user);
+    stats statstable(get_self(), pair_token.raw());
+    const auto& token = statstable.find(pair_token.raw());
+    check(token != statstable.end(), "pair token does not exist");
+
+    extended_asset ext_asset_in;
+    asset min_expected;
+    extended_symbol ext_asset_sym;
+    if (token->pool1.get_extended_symbol() == asset_in) {
+        ext_asset_sym = token->pool1.get_extended_symbol();
+        min_expected = token->pool2.quantity;
+    } else if (token->pool2.get_extended_symbol() == asset_in) {
+        ext_asset_sym = token->pool2.get_extended_symbol();
+        min_expected = token->pool2.quantity;
+    } else {
+        check(false, "doesn't have such asset in dexacnts");
+    }
+
+    dexacnts acnts(get_self(), user.value);
+    auto index = acnts.get_index<"extended"_n>();
+    const auto& acnt_balance = index.find(make128key(
+        ext_asset_sym.get_contract().value, ext_asset_sym.get_symbol().raw()));
+    check(acnt_balance != index.end(), "User does not have such token");
+    ext_asset_in = acnt_balance->balance;
+
+    // LED swap is need fee
+    if (ext_asset_in.quantity.symbol == symbol("LED", 4)) {
+        ext_asset_in.quantity.amount =
+            ext_asset_in.quantity.amount * (1 - swap_fee);
+    }
+    min_expected.amount = 1;
+
+    exchange(user, pair_token, ext_asset_in, min_expected);
+}
+
 void lemonade::exchange(name user, symbol_code pair_token,
                         extended_asset ext_asset_in, asset min_expected) {
     check(is_dex_open, "DEX is not open");
@@ -94,12 +132,12 @@ void lemonade::exchange(name user, symbol_code pair_token,
     // TODO: fee policy is 0.2% LED
     int64_t amount = 1;
     if (ext_asset_in.quantity.symbol == symbol("LED", 4)) {
-        amount = ext_asset_in.quantity.amount * 0.002 > 0
-                     ? ext_asset_in.quantity.amount * 0.002
+        amount = ext_asset_in.quantity.amount * swap_fee > 0
+                     ? ext_asset_in.quantity.amount * swap_fee
                      : 1;
     } else if (ext_asset_out.quantity.symbol == symbol("LED", 4)) {
-        amount = ext_asset_out.quantity.amount * 0.002 > 0
-                     ? ext_asset_out.quantity.amount * 0.002
+        amount = ext_asset_out.quantity.amount * swap_fee > 0
+                     ? ext_asset_out.quantity.amount * swap_fee
                      : 1;
     }
     asset ledfee = asset(amount, symbol("LED", 4));
@@ -223,12 +261,12 @@ void lemonade::memoexchange(name user, extended_asset ext_asset_in,
     // TODO: fee policy is 0.2% LED
     int64_t amount = 1;
     if (ext_asset_in.quantity.symbol == symbol("LED", 4)) {
-        amount = ext_asset_in.quantity.amount * 0.002 > 0
-                     ? ext_asset_in.quantity.amount * 0.002
+        amount = ext_asset_in.quantity.amount * swap_fee > 0
+                     ? ext_asset_in.quantity.amount * swap_fee
                      : 1;
     } else if (ext_asset_out.quantity.symbol == symbol("LED", 4)) {
-        amount = ext_asset_out.quantity.amount * 0.002 > 0
-                     ? ext_asset_out.quantity.amount * 0.002
+        amount = ext_asset_out.quantity.amount * swap_fee > 0
+                     ? ext_asset_out.quantity.amount * swap_fee
                      : 1;
     }
     asset ledfee = asset(amount, symbol("LED", 4));
@@ -409,12 +447,14 @@ void lemonade::add_signed_ext_balance(const name& user,
 //     swap_lists listtable1(get_self(), symbol1.code().raw());
 //     const auto& token1 = listtable1.find(symbol2.code().raw());
 //     check(token1 == listtable1.end(), "token symbol already exists");
-//     listtable1.emplace(get_self(), [&](auto& a) { a.pair_symbol = symbol2; });
+//     listtable1.emplace(get_self(), [&](auto& a) { a.pair_symbol = symbol2;
+//     });
 
 //     swap_lists listtable2(get_self(), symbol2.code().raw());
 //     const auto& token2 = listtable2.find(symbol1.code().raw());
 //     check(token2 == listtable2.end(), "token symbol already exists");
-//     listtable2.emplace(get_self(), [&](auto& a) { a.pair_symbol = symbol1; });
+//     listtable2.emplace(get_self(), [&](auto& a) { a.pair_symbol = symbol1;
+//     });
 
 //     pool_lists tt(get_self(), get_self().value);
 //     const auto& aa = tt.find(symbol3.code().raw());

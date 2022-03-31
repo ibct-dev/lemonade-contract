@@ -22,6 +22,7 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
    private:
     const uint64_t delay_transfer_sec = secondsPerWeek;
     const double lem_reward_rate = 0.001;  // Reward per sec
+    const double swap_fee = 0.002; // 0.2%
     const int64_t MAX = eosio::asset::max_amount;
     const int64_t INIT_MAX = 1000000000000000;  // 10^15
     const int ADD_LIQUIDITY_FEE = 1;
@@ -401,9 +402,13 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
                                         asset max_asset1, asset max_asset2);
     [[eosio::action]] void rmliquidity(name user, asset to_sell,
                                        asset min_asset1, asset min_asset2);
+
     [[eosio::action]] void exchange(name user, symbol_code pair_token,
                                     extended_asset ext_asset_in,
                                     asset min_expected);
+
+    [[eosio::action]] void exchangeall(name user, symbol_code pair_token,
+                                       extended_symbol asset_in);
 
     [[eosio::action]] void indexpair(
         name user,

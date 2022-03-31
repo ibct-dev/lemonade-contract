@@ -896,6 +896,54 @@ describe("lemonade.c v2 컨트랙트 테스트", () => {
                 if (debug) console.log(`Stats\n${JSON.stringify(tableResult)}`);
                 expect(tableResult[0]).to.not.undefined;
             });
+            it(`${user}가 LED 잔액을 이용하여 LEM을 획득함`, async () => {
+                try {
+                    const actionResult = await contractTester.actions.exchangeall(
+                        {
+                            user: user,
+                            pair_token: "LEDLEM",
+                            asset_in: {
+                                sym: "4,LED",
+                                contract: "led.token"
+                            }
+                        },
+                        [
+                            {
+                                actor: user,
+                                permission: "active",
+                            },
+                        ]
+                    );
+                    expect(actionResult).to.have.all.keys([
+                        "transaction_id",
+                        "processed",
+                    ]);
+                } catch (error) {
+                    console.log(
+                        `ERROR ${errorCount}: cannot exchangeall: ${error}`
+                    );
+                    errorCount += 1;
+                }
+            });
+            it(`${user} 계정 account 테이블 확인`, async () => {
+                const tableResult = await ledTokenTester.tables.accounts({
+                    scope: user,
+                });
+                if (debug) console.log(`accounts\n${JSON.stringify(tableResult)}`);
+            });
+            it(`dexacnts 테이블에 변경 확인`, async () => {
+                const tableResult = await contractTester.tables.dexacnts({
+                    scope: user,
+                });
+                if (debug) console.log(`Dexacnts\n${JSON.stringify(tableResult)}`);
+            });
+            it(`stats 테이블에 변경 확인`, async () => {
+                const tableResult = await contractTester.tables.stats({
+                    scope: "LEDLEM",
+                });
+                if (debug) console.log(`Stats\n${JSON.stringify(tableResult)}`);
+                expect(tableResult[0]).to.not.undefined;
+            });
         });
         describe("clmpoolreward(): 풀 예치 했으면 보상을 받자", async () => {
             it(`${user}가 LEDLEM풀의 중간보상을 받음`, async () => {
