@@ -112,14 +112,15 @@ void lemonade::exchange(name user, symbol_code pair_token,
             ((ext_asset_in.quantity.amount < 0) && (min_expected.amount <= 0)),
         "ext_asset_in must be nonzero and min_expected must have same sign or "
         "be zero");
-    
+
     // Get a fee
     const auto fee = ext_asset_in.quantity.amount * swap_fee;
-    if(ext_asset_in.quantity.symbol == token->fee1.quantity.symbol){
-        statstable.modify(token, same_payer, [&](auto& a) { a.fee1.quantity.amount += fee; });
-    }
-    else if(ext_asset_in.quantity.symbol == token->fee2.quantity.symbol){
-        statstable.modify(token, same_payer, [&](auto& a) { a.fee2.quantity.amount += fee; });
+    if (ext_asset_in.quantity.symbol == token->fee1.quantity.symbol) {
+        statstable.modify(token, same_payer,
+                          [&](auto& a) { a.fee1.quantity.amount += fee / 2; });
+    } else if (ext_asset_in.quantity.symbol == token->fee2.quantity.symbol) {
+        statstable.modify(token, same_payer,
+                          [&](auto& a) { a.fee2.quantity.amount += fee / 2; });
     }
     ext_asset_in.quantity.amount -= fee;
     auto ext_asset_out = process_exch(pair_token, ext_asset_in, min_expected);
@@ -140,31 +141,35 @@ void lemonade::clmpoolreward(name user, string pair_token_symbol) {
     auto it = acnts.find(pair_token.raw());
     check(it != acnts.end(), "user does not have pair token");
 
-    // TODO: fee policy changed
-    // asset led_reward =
-    //     asset(token->fee.amount * it->balance.amount / token->supply.amount,
-    //           symbol("LED", 4));
-    // asset lem_reward =
-    //     asset(it->balance.amount / token->supply.amount, symbol("LEM", 4));
+    // Calculate fee
+    const double ratio = it->balance.amount / token->supply.amount;
+    check(ratio > 0, "ratio must be positive");
+    auto token1_reward = token->fee1;
+    auto token2_reward = token->fee2;
+    token1_reward.quantity.amount *= ratio;
+    token2_reward.quantity.amount *= ratio;
+    check(token1_reward.quantity.amount > 0, "token reward must be positive");
+    check(token2_reward.quantity.amount > 0, "token reward must be positive");
 
-    // check(led_reward.amount > 0, "led reward must be positive");
-    // check(lem_reward.amount > 0, "lem reward must be positive");
+    action(permission_level{get_self(), "active"_n}, token1_reward.contract,
+           "transfer"_n,
+           std::make_tuple(get_self(), user, token1_reward.quantity,
+                           std::string("claim pool reward")))
+        .send();
+    action(permission_level{get_self(), "active"_n}, token2_reward.contract,
+           "transfer"_n,
+           std::make_tuple(get_self(), user, token2_reward.quantity,
+                           std::string("claim pool reward")))
+        .send();
 
-    // action(permission_level{get_self(), "active"_n}, led_token_contract,
-    //        "transfer"_n,
-    //        std::make_tuple(get_self(), user, led_reward,
-    //                        std::string("claim pool reward LED")))
-    //     .send();
-    // action(permission_level{get_self(), "active"_n}, led_token_contract,
-    //        "transfer"_n,
-    //        std::make_tuple(get_self(), user, lem_reward,
-    //                        std::string("claim pool reward LEM")))
-    //     .send();
+    statstable.modify(token, same_payer, [&](auto& a) {
+        a.fee1.quantity.amount -= token1_reward.quantity.amount;
+        a.fee2.quantity.amount -= token2_reward.quantity.amount;
+        check(a.fee1.quantity.amount >= 0, "fee must be non negative");
+        check(a.fee2.quantity.amount >= 0, "fee must be non negative");
+    });
 
-    // statstable.modify(token, same_payer, [&](auto& a) {
-    //     a.fee -= led_reward;
-    //     check(a.fee.amount >= 0, "fee must be non negative");
-    // });
+    // TODO: add LEM reward
 }
 
 extended_asset lemonade::process_exch(symbol_code pair_token,
@@ -232,26 +237,21 @@ void lemonade::memoexchange(name user, extended_asset ext_asset_in,
     check(is_dex_open, "DEX is not open");
     check(min_expected.amount >= 0,
           "min_expected must be expressed with a positive amount");
-    auto ext_asset_out = process_exch(pair_token, ext_asset_in, min_expected);
     stats statstable(get_self(), pair_token.raw());
     const auto& token = statstable.find(pair_token.raw());
     check(token != statstable.end(), "pair token does not exist");
-    // TODO: Get a fee
-    // int64_t amount = 1;
-    // if (ext_asset_in.quantity.symbol == symbol("LED", 4)) {
-    //     amount = ext_asset_in.quantity.amount * swap_fee > 0
-    //                  ? ext_asset_in.quantity.amount * swap_fee
-    //                  : 1;
-    // } else if (ext_asset_out.quantity.symbol == symbol("LED", 4)) {
-    //     amount = ext_asset_out.quantity.amount * swap_fee > 0
-    //                  ? ext_asset_out.quantity.amount * swap_fee
-    //                  : 1;
-    // }
-    // asset ledfee = asset(amount, symbol("LED", 4));
-    // extended_asset fee = extended_asset{ledfee, led_token_contract};
-    // add_signed_ext_balance(user, -fee);
 
-    // statstable.modify(token, same_payer, [&](auto& a) { a.fee += ledfee; });
+    // Get a fee
+    const auto fee = ext_asset_in.quantity.amount * swap_fee;
+    if (ext_asset_in.quantity.symbol == token->fee1.quantity.symbol) {
+        statstable.modify(token, same_payer,
+                          [&](auto& a) { a.fee1.quantity.amount += fee / 2; });
+    } else if (ext_asset_in.quantity.symbol == token->fee2.quantity.symbol) {
+        statstable.modify(token, same_payer,
+                          [&](auto& a) { a.fee2.quantity.amount += fee / 2; });
+    }
+    ext_asset_in.quantity.amount -= fee;
+    auto ext_asset_out = process_exch(pair_token, ext_asset_in, min_expected);
 
     action(permission_level{get_self(), "active"_n}, ext_asset_out.contract,
            "transfer"_n,
@@ -333,9 +333,9 @@ void lemonade::inittoken(name user, symbol new_symbol,
     poollisttable.emplace(get_self(), [&](auto& a) {
         a.lp_symbol = new_symbol;
         a.symbol1 = extended_symbol(initial_pool1.quantity.symbol,
-                                   initial_pool1.contract);
+                                    initial_pool1.contract);
         a.symbol2 = extended_symbol(initial_pool2.quantity.symbol,
-                                   initial_pool2.contract);
+                                    initial_pool2.contract);
     });
 
     placeindex(user, new_symbol, initial_pool1, initial_pool2);
