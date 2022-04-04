@@ -166,8 +166,8 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
 
     struct [[eosio::table]] pool_list {
         symbol lp_symbol;
-        symbol symbol1;
-        symbol symbol2;
+        extended_symbol symbol1;
+        extended_symbol symbol2;
         uint64_t primary_key() const { return lp_symbol.code().raw(); }
     };
 
@@ -228,6 +228,7 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
 
     typedef eosio::multi_index<"swaplists"_n, swap_list> swap_lists;
     typedef eosio::multi_index<"poollists"_n, pool_list> pool_lists;
+
     typedef eosio::multi_index<"accounts"_n, account> accounts;
     typedef eosio::multi_index<"frozens"_n, frozen> frozens;
     typedef eosio::multi_index<
@@ -323,38 +324,14 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
 
     //     cleanTable<configs2>(get_self(), get_self().value);
     // }
-    // [[eosio::action]] void clearlist() {
-    //     auto symbol1 = symbol("LED", 4);
-    //     auto symbol2 = symbol("LEM", 4);
+    // [[eosio::action]] void clear() {
     //     require_auth(get_self());
     //     printl("cleaning", 8);
 
-    //     cleanTable<pool_lists>(get_self(), symbol1.code().raw());
-    //     cleanTable<pool_lists>(get_self(), symbol2.code().raw());
-    // }
-    // [[eosio::action]] void clearstat() {
-    //     auto symbol1 = symbol("LEDLEM", 4);
-    //     auto symbol2 = symbol("LEDUSDC", 4);
-    //     auto symbol3 = symbol("LEMUSDC", 4);
-    //     auto symbol4 = symbol("LUSDTDC", 4);
-    //     auto symbol5 = symbol("LEDWBTC", 4);
-    //     auto symbol6 = symbol("LEMWBTC", 4);
-    //     auto symbol7 = symbol("LEDUSDT", 4);
-    //     auto symbol8 = symbol("LEMUSDT", 4);
-    //     require_auth(get_self());
-    //     printl("cleaning", 8);
-
-    //     cleanTable<stats>(get_self(), symbol1.code().raw());
-    //     cleanTable<stats>(get_self(), symbol2.code().raw());
-    //     cleanTable<stats>(get_self(), symbol3.code().raw());
-    //     cleanTable<stats>(get_self(), symbol4.code().raw());
-    //     cleanTable<stats>(get_self(), symbol5.code().raw());
-    //     cleanTable<stats>(get_self(), symbol6.code().raw());
-    //     cleanTable<stats>(get_self(), symbol7.code().raw());
-    //     cleanTable<stats>(get_self(), symbol8.code().raw());
+    //     cleanTable<new_pool_lists>(get_self(), get_self().value);
     // }
 
-    // [[eosio::action]] void test(asset supply);
+    // [[eosio::action]] void test();
 
     // Initialize Actions
     [[eosio::action]] void init();

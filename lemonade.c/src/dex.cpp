@@ -56,13 +56,6 @@ void lemonade::addliquidity(name user, asset to_buy, asset max_asset1,
     check((to_buy.amount > 0), "to_buy amount must be positive");
     check((max_asset1.amount >= 0) && (max_asset2.amount >= 0),
           "assets must be nonnegative");
-    // TODO: Is deposit has a fee?
-    // int64_t amount = 1;
-    // asset ledfee = asset(amount, symbol("LED", 4));
-    // extended_asset fee = extended_asset{ledfee, led_token_contract};
-    // add_signed_ext_balance(user, -fee);
-    // statstable.modify(token, same_payer, [&](auto& a) { a.fee += ledfee; });
-
     add_signed_liq(user, to_buy, true, max_asset1, max_asset2);
 }
 
@@ -119,11 +112,17 @@ void lemonade::exchange(name user, symbol_code pair_token,
             ((ext_asset_in.quantity.amount < 0) && (min_expected.amount <= 0)),
         "ext_asset_in must be nonzero and min_expected must have same sign or "
         "be zero");
-
+    
+    // Get a fee
+    const auto fee = ext_asset_in.quantity.amount * swap_fee;
+    if(ext_asset_in.quantity.symbol == token->fee1.quantity.symbol){
+        statstable.modify(token, same_payer, [&](auto& a) { a.fee1.quantity.amount += fee; });
+    }
+    else if(ext_asset_in.quantity.symbol == token->fee2.quantity.symbol){
+        statstable.modify(token, same_payer, [&](auto& a) { a.fee2.quantity.amount += fee; });
+    }
+    ext_asset_in.quantity.amount -= fee;
     auto ext_asset_out = process_exch(pair_token, ext_asset_in, min_expected);
-
-    // TODO: Get a fee
-    // statstable.modify(token, same_payer, [&](auto& a) { a.fee += ledfee; });
 
     add_signed_ext_balance(user, -ext_asset_in);
     add_signed_ext_balance(user, ext_asset_out);
@@ -259,7 +258,7 @@ void lemonade::memoexchange(name user, extended_asset ext_asset_in,
            std::make_tuple(
                get_self(), user, ext_asset_out.quantity,
                std::string("exchange ") + ext_asset_in.quantity.to_string() +
-                   std::string("to ") + ext_asset_out.quantity.to_string()))
+                   std::string(" to ") + ext_asset_out.quantity.to_string()))
         .send();
 }
 
@@ -333,8 +332,10 @@ void lemonade::inittoken(name user, symbol new_symbol,
     check(poollist == poollisttable.end(), "token symbol already exists");
     poollisttable.emplace(get_self(), [&](auto& a) {
         a.lp_symbol = new_symbol;
-        a.symbol1 = initial_pool1.quantity.symbol;
-        a.symbol2 = initial_pool2.quantity.symbol;
+        a.symbol1 = extended_symbol(initial_pool1.quantity.symbol,
+                                   initial_pool1.contract);
+        a.symbol2 = extended_symbol(initial_pool2.quantity.symbol,
+                                   initial_pool2.contract);
     });
 
     placeindex(user, new_symbol, initial_pool1, initial_pool2);
@@ -423,26 +424,16 @@ void lemonade::add_signed_ext_balance(const name& user,
     }
 }
 
-// void lemonade::test(asset supply) {
-//     stats statstable(get_self(), supply.symbol.code().raw());
-//     const auto& token = statstable.find(supply.symbol.code().raw());
-//     check(token == statstable.end(), "pair token already exist");
-
-//     new_stats newstatstable(get_self(), supply.symbol.code().raw());
-//     const auto& new_token = newstatstable.find(supply.symbol.code().raw());
-//     check(new_token != newstatstable.end(), "pair token does not exist");
-
-//     statstable.emplace(get_self(), [&](auto& a) {
-//         a.supply = new_token->supply;
-//         a.max_supply = new_token->max_supply;
-//         a.issuer = new_token->issuer;
-//         a.pool1 = new_token->pool1;
-//         a.pool2 = new_token->pool2;
-//         a.fee1 = new_token->fee1;
-//         a.fee2 = new_token->fee2;
-//     });
-
-//     newstatstable.erase(new_token);
+// void lemonade::test() {
+//     new_pool_lists newpoollisttable(get_self(), get_self().value);
+//     pool_lists poollisttable(get_self(), get_self().value);
+//     for (auto& p : newpoollisttable) {
+//         poollisttable.emplace(get_self(), [&](auto& a) {
+//             a.lp_symbol = p.lp_symbol;
+//             a.symbol1 = p.symbol1;
+//             a.symbol2 = p.symbol2;
+//         });
+//     }
 // }
 
 uint128_t lemonade::make128key(uint64_t a, uint64_t b) {
