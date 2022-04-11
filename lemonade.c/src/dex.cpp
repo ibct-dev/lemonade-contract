@@ -129,47 +129,84 @@ void lemonade::exchange(name user, symbol_code pair_token,
     add_signed_ext_balance(user, ext_asset_out);
 }
 
-void lemonade::clmpoolreward(name user, string pair_token_symbol) {
-    check(is_dex_open, "DEX is not open");
-    require_auth(user);
+void lemonade::clmpoolreward(string pair_token_symbol, double total,
+                             double pool) {
+    require_auth(get_self());
+    issue_lem();
     symbol_code pair_token = symbol_code(pair_token_symbol);
+    pool_rewards poolrewardstable(get_self(), get_self().value);
+    const auto poolrewards = poolrewardstable.find(pair_token.raw());
+
+    configs config_table(get_self(), get_self().value);
+    auto existing_config = config_table.find(0);
+    check(existing_config != config_table.end(), "contract not initialized");
+
     stats statstable(get_self(), pair_token.raw());
     const auto token = statstable.find(pair_token.raw());
     check(token != statstable.end(), "pair token does not exist");
 
-    accounts acnts(get_self(), user.value);
-    auto it = acnts.find(pair_token.raw());
-    check(it != acnts.end(), "user does not have pair token");
+    auto current = now();
+    if (poolrewards == poolrewardstable.end()) {
+        poolrewardstable.emplace(get_self(), [&](auto& a) {
+            a.pair_symbol_code = pair_token;
+            a.last_reward = now();
+        });
+    } else {
+        check(current - poolrewards->last_reward >= secondsPerDay,
+              "today reward already claimed");
+        poolrewardstable.modify(poolrewards, same_payer,
+                                [&](auto& a) { a.last_reward = now(); });
+    }
 
-    // Calculate fee
-    const double ratio = it->balance.amount / token->supply.amount;
-    check(ratio > 0, "ratio must be positive");
-    auto token1_reward = token->fee1;
-    auto token2_reward = token->fee2;
-    token1_reward.quantity.amount *= ratio;
-    token2_reward.quantity.amount *= ratio;
-    check(token1_reward.quantity.amount > 0, "token reward must be positive");
-    check(token2_reward.quantity.amount > 0, "token reward must be positive");
+    const double ratio = pool / total;
 
-    action(permission_level{get_self(), "active"_n}, token1_reward.contract,
-           "transfer"_n,
-           std::make_tuple(get_self(), user, token1_reward.quantity,
-                           std::string("claim pool reward")))
-        .send();
-    action(permission_level{get_self(), "active"_n}, token2_reward.contract,
-           "transfer"_n,
-           std::make_tuple(get_self(), user, token2_reward.quantity,
-                           std::string("claim pool reward")))
-        .send();
-
+    user_infos userinfostable(get_self(), pair_token.raw());
+    for (auto k : userinfostable) {
+        if (k.balance.amount == 0) {
+            continue;
+        }
+        const double user_ratio = k.balance.amount / token->supply.amount;
+        const asset fee1_reward =
+            asset(token->fee1.quantity.amount * user_ratio,
+                  token->fee1.quantity.symbol);
+        const asset fee2_reward =
+            asset(token->fee2.quantity.amount * user_ratio,
+                  token->fee2.quantity.symbol);
+        const asset fee3_reward =
+            asset(DEX_LEM_REWARD /
+                      (uint32_t)pow(2, existing_config->half_life_count) *
+                      ratio * user_ratio,
+                  token->fee3.quantity.symbol);
+        if (fee1_reward.amount > 0) {
+            action(permission_level{get_self(), "active"_n}, "led.token"_n,
+                   "transfer"_n,
+                   make_tuple(get_self(), k.account, fee1_reward,
+                              string("Pool rewards for providing liquidity")))
+                .send();
+        }
+        if (fee2_reward.amount > 0) {
+            action(permission_level{get_self(), "active"_n}, "led.token"_n,
+                   "transfer"_n,
+                   make_tuple(get_self(), k.account, fee2_reward,
+                              string("Pool rewards for providing liquidity")))
+                .send();
+        }
+        if (fee3_reward.amount > 0) {
+            action(permission_level{get_self(), "active"_n}, "led.token"_n,
+                   "transfer"_n,
+                   make_tuple(get_self(), k.account, fee3_reward,
+                              string("Pool rewards for providing liquidity")))
+                .send();
+        }
+    }
+    auto fee1 = token->pool1;
+    auto fee2 = token->pool2;
+    fee1.quantity.amount = 0;
+    fee2.quantity.amount = 0;
     statstable.modify(token, same_payer, [&](auto& a) {
-        a.fee1.quantity.amount -= token1_reward.quantity.amount;
-        a.fee2.quantity.amount -= token2_reward.quantity.amount;
-        check(a.fee1.quantity.amount >= 0, "fee must be non negative");
-        check(a.fee2.quantity.amount >= 0, "fee must be non negative");
+        a.fee1 = fee1;
+        a.fee2 = fee2;
     });
-
-    // TODO: add LEM reward
 }
 
 extended_asset lemonade::process_exch(symbol_code pair_token,

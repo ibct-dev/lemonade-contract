@@ -25,8 +25,7 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
     const double swap_fee = 0.003;         // 0.3%
     const int64_t MAX = eosio::asset::max_amount;
     const int64_t INIT_MAX = 1000000000000000;  // 10^15
-    const int ADD_LIQUIDITY_FEE = 1;
-    const int DEFAULT_FEE = 10;
+    const int DEX_LEM_REWARD = 51840'0000;
     const name led_token_contract = "led.token"_n;
     const int64_t LEM_MAX = 220752000'0000;
     const name rc_reward_account = "rclemonade.p"_n;
@@ -61,6 +60,12 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
         double price;
         uint64_t primary_key() const { return id; }
         uint64_t get_symbol() const { return symbol.value; }
+    };
+
+    struct [[eosio::table]] pool_reward {
+        symbol_code pair_symbol_code;
+        uint32_t last_reward;
+        uint64_t primary_key() const { return pair_symbol_code.raw(); }
     };
 
     struct [[eosio::table]] product {
@@ -216,7 +221,8 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
         indexed_by<"bysymbol"_n,
                    const_mem_fun<config2, uint64_t, &config2::get_symbol>>>
         configs2;
-
+    typedef eosio::multi_index<"poolrewards"_n, pool_reward> pool_rewards;
+    
     typedef eosio::multi_index<
         "products"_n, product,
         indexed_by<"byname"_n,
@@ -423,7 +429,8 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
         name user,
         symbol lp_symbol);  // This action is only temporarily useful
 
-    [[eosio::action]] void clmpoolreward(name user, string pair_token_symbol);
+    [[eosio::action]] void clmpoolreward(string pair_token_symbol, double total,
+                                         double pool);
 
     // On Notify
     [[eosio::on_notify("*::transfer")]] void transfer_event(
