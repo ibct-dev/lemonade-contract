@@ -156,7 +156,14 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
         extended_asset pool2;
         extended_asset fee1;
         extended_asset fee2;
+        extended_asset fee3;
         uint64_t primary_key() const { return supply.symbol.code().raw(); }
+    };
+
+    struct [[eosio::table]] user_info {
+        name account;
+        asset balance;
+        uint64_t primary_key() const { return account.value; }
     };
 
     struct [[eosio::table]] swap_list {
@@ -225,6 +232,7 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
     typedef eosio::multi_index<"bettings"_n, betting> bettings;
 
     typedef eosio::multi_index<"stats"_n, currency_stats> stats;
+    typedef eosio::multi_index<"userinfo"_n, user_info> user_infos;
 
     typedef eosio::multi_index<"swaplists"_n, swap_list> swap_lists;
     typedef eosio::multi_index<"poollists"_n, pool_list> pool_lists;
@@ -324,14 +332,15 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
 
     //     cleanTable<configs2>(get_self(), get_self().value);
     // }
-    // [[eosio::action]] void clear() {
+    // [[eosio::action]] void clear(string pair_token_symbol) {
     //     require_auth(get_self());
     //     printl("cleaning", 8);
+    //     symbol_code pair_token = symbol_code(pair_token_symbol);
 
-    //     cleanTable<new_pool_lists>(get_self(), get_self().value);
+    //     cleanTable<stats>(get_self(), pair_token.raw());
     // }
 
-    // [[eosio::action]] void test();
+    // [[eosio::action]] void test(name owner, string pair_token_symbol);
 
     // Initialize Actions
     [[eosio::action]] void init();

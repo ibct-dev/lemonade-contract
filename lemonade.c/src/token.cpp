@@ -22,9 +22,6 @@ void lemonade::transfer(const name& from, const name& to, const asset& quantity,
 
     sub_balance(from, quantity);
     add_balance(to, quantity, payer);
-    if (to == get_self())
-        transfer_event(from, to, quantity,
-                       memo);  // line added to code from eosio.token
 }
 
 void lemonade::sub_balance(const name& owner, const asset& value) {
@@ -33,18 +30,39 @@ void lemonade::sub_balance(const name& owner, const asset& value) {
     const auto& from =
         from_acnts.get(value.symbol.code().raw(), "no balance object found");
     check(from.balance.amount >= value.amount, "overdrawn balance");
+    user_infos userinfostable(get_self(), value.symbol.code().raw());
+    const auto& infos = userinfostable.find(owner.value);
+    check(infos != userinfostable.end(), "user does not exist");
+    check(infos->balance.amount >= value.amount, "overdrawn balance");
 
     from_acnts.modify(from, owner, [&](auto& a) { a.balance -= value; });
+
+    userinfostable.modify(infos, same_payer,
+                          [&](auto& a) { a.balance -= value; });
 }
 
 void lemonade::add_balance(const name& owner, const asset& value,
                            const name& ram_payer) {
     accounts to_acnts(get_self(), owner.value);
     auto to = to_acnts.find(value.symbol.code().raw());
+
+    user_infos userinfostable(get_self(), value.symbol.code().raw());
+    auto infos = userinfostable.find(owner.value);
+
     if (to == to_acnts.end()) {
         to_acnts.emplace(ram_payer, [&](auto& a) { a.balance = value; });
     } else {
         to_acnts.modify(to, same_payer, [&](auto& a) { a.balance += value; });
+    }
+
+    if (infos == userinfostable.end()) {
+        userinfostable.emplace(get_self(), [&](auto& a) {
+            a.account = owner;
+            a.balance = value;
+        });
+    } else {
+        userinfostable.modify(infos, same_payer,
+                              [&](auto& a) { a.balance += value; });
     }
 }
 

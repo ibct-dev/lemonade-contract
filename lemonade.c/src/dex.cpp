@@ -302,11 +302,20 @@ void lemonade::inittoken(name user, symbol new_symbol,
     statstable.emplace(user, [&](auto& a) {
         a.supply = new_token;
         a.max_supply = asset{MAX, new_symbol};
-        a.issuer = get_self();
+        a.issuer = user;
         a.pool1 = initial_pool1;
         a.pool2 = initial_pool2;
         a.fee1 = fee1;
         a.fee2 = fee2;
+        a.fee3 = extended_asset(asset(0, symbol("LEM", 4)), "led.token"_n);
+    });
+
+    user_infos userinfostable(get_self(), new_symbol.code().raw());
+    const auto& infos = userinfostable.find(user.value);
+    check(infos == userinfostable.end(), "user already has token");
+    userinfostable.emplace(get_self(), [&](auto& a) {
+        a.account = user;
+        a.balance = new_token;
     });
 
     swap_lists listtable1(get_self(),
@@ -424,16 +433,18 @@ void lemonade::add_signed_ext_balance(const name& user,
     }
 }
 
-// void lemonade::test() {
-//     new_pool_lists newpoollisttable(get_self(), get_self().value);
-//     pool_lists poollisttable(get_self(), get_self().value);
-//     for (auto& p : newpoollisttable) {
-//         poollisttable.emplace(get_self(), [&](auto& a) {
-//             a.lp_symbol = p.lp_symbol;
-//             a.symbol1 = p.symbol1;
-//             a.symbol2 = p.symbol2;
-//         });
-//     }
+// void lemonade::test(name owner, string pair_token_symbol) {
+//     symbol_code pair_token = symbol_code(pair_token_symbol);
+//     accounts from_acnts(get_self(), owner.value);
+
+//     const auto& from =
+//         from_acnts.get(pair_token.raw(), "no balance object found");
+
+//     user_infos userinfostable(get_self(), pair_token.raw());
+//     userinfostable.emplace(get_self(), [&](auto& a) {
+//         a.account = owner;
+//         a.balance = from.balance;
+//     });
 // }
 
 uint128_t lemonade::make128key(uint64_t a, uint64_t b) {
