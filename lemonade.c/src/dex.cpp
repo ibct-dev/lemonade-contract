@@ -152,7 +152,7 @@ void lemonade::clmpoolreward(string pair_token_symbol, double total,
             a.last_reward = now();
         });
     } else {
-        check(current - poolrewards->last_reward >= secondsPerDay,
+        check(current - poolrewards->last_reward >= (secondsPerDay - 3600),
               "today reward already claimed");
         poolrewardstable.modify(poolrewards, same_payer,
                                 [&](auto& a) { a.last_reward = now(); });
