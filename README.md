@@ -549,3 +549,8 @@ cleos push action led.token transfer '["myaccount", "lemonade.c", "1.0000 LED", 
 ```json
 cleos push action led.token transfer '["myaccount", "lemonade.c", "1.0000 LED", "exchange/LEDLEM/1.0000 LEM"]' -p myaccount
 ```
+
+* exchange has own action too (lemonade::exchange)
+```json
+cleos push action lemonade.c exchange '["myaccount", "LEDLEM", "1.0000 LED", "1.0000 LEM"]' -p myaccount
+```
