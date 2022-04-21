@@ -20,7 +20,7 @@ typedef uint64_t id_type;
 
 class [[eosio::contract("lemonade.c")]] lemonade : public contract {
    private:
-    const uint64_t delay_transfer_sec = secondsPerWeek;
+    const uint64_t delay_transfer_sec = 1;
     const double lem_reward_rate = 0.001;  // Reward per sec
     const double swap_fee = 0.003;         // 0.3%
     const int64_t MAX = eosio::asset::max_amount;
