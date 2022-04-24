@@ -137,11 +137,6 @@ void lemonade::stake(const name &owner, const asset &quantity,
     auto existing_product = productIdx.find(product_name.value);
     check(existing_product != productIdx.end(), "product does not exist");
 
-    stakings stakings_table(get_self(), owner.value);
-    auto stakingIdx = stakings_table.get_index<eosio::name("byproductid")>();
-    auto existing_staking = stakingIdx.find(existing_product->id);
-    check(existing_staking == stakingIdx.end(), "already has same product");
-
     configs config_table(get_self(), get_self().value);
     auto existing_config = config_table.find(0);
     check(existing_config != config_table.end(), "contract not initialized");
@@ -151,19 +146,9 @@ void lemonade::stake(const name &owner, const asset &quantity,
     auto existing_config2 = config2Idx.find("led"_n.value);
     check(existing_config2 != config2Idx.end(), "led price not exist");
 
-    if (existing_product->amount_per_account.amount != 0) {
-        check(existing_product->amount_per_account.amount >= quantity.amount,
-              "exceed amount per account limits");
-    }
-
-    if (existing_product->maximum_amount_limit.amount != 0) {
-        check(existing_product->maximum_amount_limit.amount >=
-                  (existing_product->current_amount.amount + quantity.amount),
-              "exceed product total amount limits");
-    }
-
-    asset zero_led = asset(0, symbol("LED", 4));
-    asset zero_lem = asset(0, symbol("LEM", 4));
+    stakings stakings_table(get_self(), owner.value);
+    auto stakingIdx = stakings_table.get_index<eosio::name("byproductid")>();
+    auto existing_staking = stakingIdx.find(existing_product->id);
 
     uint32_t started_at = now();
     uint32_t ended_at = 0;
@@ -172,33 +157,155 @@ void lemonade::stake(const name &owner, const asset &quantity,
     }
     uint32_t last_lem_reward = existing_product->has_lem_rewards ? now() : 0;
     double base = 0;
-    name prediction = "none"_n;
-    if (price_prediction.has_value() && price_prediction.value() != "none"_n) {
-        check(existing_product->has_prediction,
-              "Product doesn't accept price prediction");
-        prediction = price_prediction.value();
-        base = existing_config2->price;
+
+    // If staking doesn't exist, create new staking
+    if (existing_staking == stakingIdx.end()) {
+        if (existing_product->amount_per_account.amount != 0) {
+            check(
+                existing_product->amount_per_account.amount >= quantity.amount,
+                "exceed amount per account limits");
+        }
+
+        if (existing_product->maximum_amount_limit.amount != 0) {
+            check(
+                existing_product->maximum_amount_limit.amount >=
+                    (existing_product->current_amount.amount + quantity.amount),
+                "exceed product total amount limits");
+        }
+
+        asset zero_led = asset(0, symbol("LED", 4));
+        asset zero_lem = asset(0, symbol("LEM", 4));
+
+        uint32_t last_lem_reward =
+            existing_product->has_lem_rewards ? now() : 0;
+        name prediction = "none"_n;
+        if (price_prediction.has_value() &&
+            price_prediction.value() != "none"_n) {
+            check(existing_product->has_prediction,
+                  "Product doesn't accept price prediction");
+            prediction = price_prediction.value();
+            base = existing_config2->price;
+        }
+
+        stakings_table.emplace(get_self(), [&](staking &a) {
+            a.id = stakings_table.available_primary_key();
+            a.balance = quantity;
+            a.product_id = existing_product->id;
+            a.current_yield = existing_product->minimum_yield;
+            a.price_prediction = prediction;
+            a.started_at = started_at;
+            a.base_price = base;
+            a.ended_at = ended_at;
+            a.lem_rewards = zero_lem;
+            a.led_rewards = zero_led;
+            a.last_claim_led_reward = started_at;
+            a.last_claim_lem_reward = last_lem_reward;
+        });
+
+        productIdx.modify(existing_product, same_payer, [&](product &a) {
+            a.current_amount += quantity;
+            a.buyers.push_back(owner);
+        });
     }
+    // If staking exist, update exist staking
+    else if (existing_staking != stakingIdx.end()) {
+        check(existing_staking->ended_at > now(), "staking already ended");
+        if (existing_product->amount_per_account.amount != 0) {
+            check(existing_product->amount_per_account.amount >=
+                      existing_staking->balance.amount + quantity.amount,
+                  "exceed amount per account limits");
+        }
 
-    stakings_table.emplace(get_self(), [&](staking &a) {
-        a.id = stakings_table.available_primary_key();
-        a.balance = quantity;
-        a.product_id = existing_product->id;
-        a.current_yield = existing_product->minimum_yield;
-        a.price_prediction = prediction;
-        a.started_at = started_at;
-        a.base_price = base;
-        a.ended_at = ended_at;
-        a.lem_rewards = zero_lem;
-        a.led_rewards = zero_led;
-        a.last_claim_led_reward = started_at;
-        a.last_claim_lem_reward = last_lem_reward;
-    });
+        if (existing_product->maximum_amount_limit.amount != 0) {
+            check(existing_product->maximum_amount_limit.amount >=
+                      (existing_product->current_amount.amount +
+                       quantity.amount + existing_staking->balance.amount),
+                  "exceed product total amount limits");
+        }
 
-    productIdx.modify(existing_product, same_payer, [&](product &a) {
-        a.current_amount += quantity;
-        a.buyers.push_back(owner);
-    });
+        asset zero_led = asset(0, symbol("LED", 4));
+        asset zero_lem = asset(0, symbol("LEM", 4));
+        if (existing_product->has_prediction) {
+            base = existing_config2->price;
+        }
+
+        //===========================================================
+        issue_lem();
+        auto current = now();
+
+        auto yield = existing_staking->current_yield;
+
+        // calculate total led rewards
+        const auto yield_per_sec = (yield - 1) / secondsPerYear;
+        asset total_led_reward =
+            asset(existing_staking->balance.amount * yield_per_sec *
+                      (current - existing_staking->started_at),
+                  existing_staking->balance.symbol);
+        asset to_owner_led = total_led_reward - existing_staking->led_rewards;
+
+        // calculate total lem rewards
+        asset to_owner_lem = asset(0, symbol("LEM", 4));
+        uint32_t total_lem_reward_amount = 0;
+        uint32_t last_reward = existing_staking->started_at;
+        if (existing_product->has_lem_rewards == true) {
+            for (int i = 0; i < 3; i++) {
+                if (existing_config->last_half_life_updated[i] <= current &&
+                    current < existing_config->last_half_life_updated[i + 1]) {
+                    total_lem_reward_amount +=
+                        ((current - last_reward) / (uint32_t)pow(2, i));
+                } else if (existing_config->last_half_life_updated[i + 1] <=
+                           current) {
+                    total_lem_reward_amount +=
+                        ((existing_config->last_half_life_updated[i + 1] -
+                          last_reward) /
+                         (uint32_t)pow(2, i));
+                    last_reward =
+                        existing_config->last_half_life_updated[i + 1];
+                }
+            }
+
+            asset total_lem_reward = asset(existing_staking->balance.amount *
+                                               total_lem_reward_amount *
+                                               lem_reward_rate / secondsPerHour,
+                                           symbol("LEM", 4));
+            to_owner_lem = total_lem_reward - existing_staking->lem_rewards;
+        }
+
+        auto sender_id = now();
+        auto delay = product_name == "normal"_n ? 1 : delay_transfer_sec;
+
+        eosio::transaction txn;
+        if (to_owner_led.amount > 0) {
+            txn.actions.emplace_back(permission_level{get_self(), "active"_n},
+                                     "led.token"_n, "transfer"_n,
+                                     make_tuple(get_self(), owner, to_owner_led,
+                                                string("stake reward")));
+        }
+        if (existing_product->has_lem_rewards == true &&
+            to_owner_lem.amount > 0) {
+            txn.actions.emplace_back(permission_level{get_self(), "active"_n},
+                                     "led.token"_n, "transfer"_n,
+                                     make_tuple(get_self(), owner, to_owner_lem,
+                                                string("stake reward")));
+        }
+        txn.delay_sec = delay;
+        txn.send(sender_id, get_self());
+        //===========================================================
+
+        stakingIdx.modify(existing_staking, same_payer, [&](staking &a) {
+            a.balance += quantity;
+            a.started_at = started_at;
+            a.ended_at = ended_at;
+            a.base_price = base;
+            a.lem_rewards = zero_lem;
+            a.led_rewards = zero_led;
+            a.last_claim_led_reward = started_at;
+            a.last_claim_lem_reward = last_lem_reward;
+        });
+
+        productIdx.modify(existing_product, same_payer,
+                          [&](product &a) { a.current_amount += quantity; });
+    }
 }
 
 void lemonade::unstake(const name &owner, const name &product_name) {
