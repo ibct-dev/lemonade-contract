@@ -32,7 +32,7 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
     const name marketing_account = "malemonade.p"_n;
     const name team_account = "tmlemonade.p"_n;
     const name reserved_account = "rvlemonade.p"_n;
-    const bool is_dex_open = true;
+    const bool is_dex_open = false;
 
     const enum Status {
         NOT_STARTED,
@@ -145,7 +145,7 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
                                return p.first == owner;
                            }) != long_betters.end();
         }
-        uint8_t get_status() const { return status; }
+        uint64_t get_status() const { return (uint64_t)status; }
     };
 
     struct [[eosio::table]] account {
@@ -222,7 +222,7 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
                    const_mem_fun<config2, uint64_t, &config2::get_symbol>>>
         configs2;
     typedef eosio::multi_index<"poolrewards"_n, pool_reward> pool_rewards;
-    
+
     typedef eosio::multi_index<
         "products"_n, product,
         indexed_by<"byname"_n,
@@ -235,7 +235,11 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
                    const_mem_fun<staking, uint64_t, &staking::get_product_id>>>
         stakings;
 
-    typedef eosio::multi_index<"bettings"_n, betting> bettings;
+    typedef eosio::multi_index<
+        "bettings"_n, betting,
+        indexed_by<"bystatus"_n,
+                   const_mem_fun<betting, uint64_t, &betting::get_status>>>
+        bettings;
 
     typedef eosio::multi_index<"stats"_n, currency_stats> stats;
     typedef eosio::multi_index<"userinfo"_n, user_info> user_infos;
@@ -347,6 +351,7 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
     // }
 
     // [[eosio::action]] void test(name owner, string pair_token_symbol);
+    [[eosio::action]] void rmpool(const name& user, const symbol& lp_symbol);
 
     // Initialize Actions
     [[eosio::action]] void init();

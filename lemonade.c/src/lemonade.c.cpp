@@ -229,7 +229,7 @@ void lemonade::stake(const name &owner, const asset &quantity,
             base = existing_config2->price;
         }
 
-        //===========================================================
+        // Give unreceived reward
         issue_lem();
         auto current = now();
 
@@ -290,7 +290,6 @@ void lemonade::stake(const name &owner, const asset &quantity,
         }
         txn.delay_sec = delay;
         txn.send(sender_id, get_self());
-        //===========================================================
 
         stakingIdx.modify(existing_staking, same_payer, [&](staking &a) {
             a.balance += quantity;
