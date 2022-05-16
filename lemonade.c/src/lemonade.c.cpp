@@ -270,25 +270,21 @@ void lemonade::stake(const name &owner, const asset &quantity,
             to_owner_lem = total_lem_reward - existing_staking->lem_rewards;
         }
 
-        auto sender_id = now();
-        auto delay = product_name == "normal"_n ? 1 : delay_transfer_sec;
-
-        eosio::transaction txn;
         if (to_owner_led.amount > 0) {
-            txn.actions.emplace_back(permission_level{get_self(), "active"_n},
-                                     "led.token"_n, "transfer"_n,
-                                     make_tuple(get_self(), owner, to_owner_led,
-                                                string("stake reward")));
+            action(permission_level{get_self(), "active"_n}, "led.token"_n,
+                   "transfer"_n,
+                   make_tuple(get_self(), owner, to_owner_led,
+                              string("stake reward")))
+                .send();
         }
         if (existing_product->has_lem_rewards == true &&
             to_owner_lem.amount > 0) {
-            txn.actions.emplace_back(permission_level{get_self(), "active"_n},
-                                     "led.token"_n, "transfer"_n,
-                                     make_tuple(get_self(), owner, to_owner_lem,
-                                                string("stake reward")));
+            action(permission_level{get_self(), "active"_n}, "led.token"_n,
+                   "transfer"_n,
+                   make_tuple(get_self(), owner, to_owner_lem,
+                              string("stake reward")))
+                .send();
         }
-        txn.delay_sec = delay;
-        txn.send(sender_id, get_self());
 
         stakingIdx.modify(existing_staking, same_payer, [&](staking &a) {
             a.balance += quantity;
@@ -394,22 +390,18 @@ void lemonade::unstake(const name &owner, const name &product_name) {
         to_owner_lem = total_lem_reward - existing_staking->lem_rewards;
     }
 
-    auto sender_id = now();
-    auto delay = product_name == "normal"_n ? 1 : delay_transfer_sec;
     check(to_owner_led.amount > 0, "unstake amount must not be zero");
 
-    eosio::transaction txn;
-    txn.actions.emplace_back(
-        permission_level{get_self(), "active"_n}, "led.token"_n, "transfer"_n,
-        make_tuple(get_self(), owner, to_owner_led, string("unstake")));
+    action(permission_level{get_self(), "active"_n}, "led.token"_n,
+           "transfer"_n,
+           make_tuple(get_self(), owner, to_owner_led, string("unstake")))
+        .send();
     if (existing_product->has_lem_rewards == true && to_owner_lem.amount > 0) {
-        txn.actions.emplace_back(
-            permission_level{get_self(), "active"_n}, "led.token"_n,
-            "transfer"_n,
-            make_tuple(get_self(), owner, to_owner_lem, string("unstake")));
+        action(permission_level{get_self(), "active"_n}, "led.token"_n,
+               "transfer"_n,
+               make_tuple(get_self(), owner, to_owner_lem, string("unstake")))
+            .send();
     }
-    txn.delay_sec = delay;
-    txn.send(sender_id, get_self());
 
     productIdx.modify(existing_product, same_payer, [&](product &a) {
         a.current_amount -= existing_staking->balance;
