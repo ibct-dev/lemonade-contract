@@ -209,7 +209,6 @@ void lemonade::stake(const name &owner, const asset &quantity,
     }
     // If staking exist, update exist staking
     else if (existing_staking != stakingIdx.end()) {
-        check(existing_staking->ended_at > now(), "staking already ended");
         if (existing_product->amount_per_account.amount != 0) {
             check(existing_product->amount_per_account.amount >=
                       existing_staking->balance.amount + quantity.amount,
