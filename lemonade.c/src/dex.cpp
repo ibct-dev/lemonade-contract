@@ -1,5 +1,49 @@
 #include "lemonade.c/lemonade.c.hpp"
 
+void lemonade::rmpool(const name& user, const symbol& lp_symbol) {
+    check(is_dex_open, "DEX is not open");
+    require_auth(user);
+
+    stats statstable(get_self(), lp_symbol.code().raw());
+    const auto& token = statstable.find(lp_symbol.code().raw());
+    check(token != statstable.end(), "token symbol not exists");
+
+    pool_lists poollisttable(get_self(), get_self().value);
+    const auto& poollist = poollisttable.find(lp_symbol.code().raw());
+    check(poollist != poollisttable.end(), "token symbol not exists");
+
+    lemindexes indextable(get_self(), get_self().value);
+    auto index = indextable.find(lp_symbol.code().raw());
+    check(index != indextable.end(), "the pool is not indexed");
+
+    symbol token0 = token->pool1.quantity.symbol;
+    symbol token1 = token->pool2.quantity.symbol;
+
+    swap_lists listtable1(get_self(), token0.code().raw());
+    const auto& tokena = listtable1.find(token1.code().raw());
+    check(tokena != listtable1.end(), "token symbol not exists");
+
+    swap_lists listtable2(get_self(), token1.code().raw());
+    const auto& tokenb = listtable2.find(token0.code().raw());
+    check(tokenb != listtable2.end(), "token symbol not exists");
+
+    statstable.erase(token);
+    poollisttable.erase(poollist);
+    indextable.erase(index);
+    listtable1.erase(tokena);
+    listtable2.erase(tokenb);
+
+    user_infos userinfostable(get_self(), lp_symbol.code().raw());
+    for (auto k : userinfostable) {
+        accounts to_acnts(get_self(), k.account.value);
+        auto to = to_acnts.find(lp_symbol.code().raw());
+        check(to != to_acnts.end(), "1 not exists");
+        to_acnts.erase(to);
+    }
+
+    cleanTable<user_infos>(get_self(), lp_symbol.code().raw());
+}
+
 void lemonade::openext(const name& user, const extended_symbol& ext_symbol) {
     check(is_dex_open, "DEX is not open");
     require_auth(user);
@@ -345,14 +389,6 @@ void lemonade::inittoken(name user, symbol new_symbol,
         a.fee1 = fee1;
         a.fee2 = fee2;
         a.fee3 = extended_asset(asset(0, symbol("LEM", 4)), "led.token"_n);
-    });
-
-    user_infos userinfostable(get_self(), new_symbol.code().raw());
-    const auto& infos = userinfostable.find(user.value);
-    check(infos == userinfostable.end(), "user already has token");
-    userinfostable.emplace(get_self(), [&](auto& a) {
-        a.account = user;
-        a.balance = new_token;
     });
 
     swap_lists listtable1(get_self(),
