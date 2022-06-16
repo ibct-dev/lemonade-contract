@@ -832,15 +832,15 @@ void lemonade::issue_lem() {
             a.last_lem_bucket_fill = current;
         });
 
-        asset to_rc_reward = asset(new_token.amount * 0.3, symbol("LEM", 4));
+        asset to_lendig_reward = asset(new_token.amount * 0.3, symbol("LEM", 4));
         asset to_marketing = asset(new_token.amount * 0.1, symbol("LEM", 4));
         asset to_team = asset(new_token.amount * 0.05, symbol("LEM", 4));
         asset to_reserve = asset(new_token.amount * 0.05, symbol("LEM", 4));
 
-        if (to_rc_reward.amount > 0) {
+        if (to_lendig_reward.amount > 0) {
             action(permission_level{get_self(), "active"_n}, "led.token"_n,
                    "transfer"_n,
-                   make_tuple(get_self(), rc_reward_account, to_rc_reward,
+                   make_tuple(get_self(), lending_reward_account, to_lendig_reward,
                               string("fill bucket to rc reward")))
                 .send();
         }
