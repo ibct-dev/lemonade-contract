@@ -28,10 +28,10 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
     const int DEX_LEM_REWARD = 51840'0000;
     const name led_token_contract = "led.token"_n;
     const int64_t LEM_MAX = 220752000'0000;
-    const name rc_reward_account = "rclemonade.p"_n;
-    const name marketing_account = "malemonade.p"_n;
-    const name team_account = "tmlemonade.p"_n;
-    const name reserved_account = "rvlemonade.p"_n;
+    const name lending_reward_account = "le.lemonade"_n;
+    const name marketing_account = "mk.lemonade"_n;
+    const name team_account = "tm.lemonade"_n;
+    const name reserved_account = " rs.lemonade"_n;
     const bool is_dex_open = false;
 
     const enum Status {
