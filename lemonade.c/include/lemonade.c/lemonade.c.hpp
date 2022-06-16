@@ -31,7 +31,7 @@ class [[eosio::contract("lemonade.c")]] lemonade : public contract {
     const name lending_reward_account = "le.lemonade"_n;
     const name marketing_account = "mk.lemonade"_n;
     const name team_account = "tm.lemonade"_n;
-    const name reserved_account = " rs.lemonade"_n;
+    const name reserved_account = "rs.lemonade"_n;
     const bool is_dex_open = false;
 
     const enum Status {
