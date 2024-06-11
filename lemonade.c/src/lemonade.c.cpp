@@ -244,29 +244,27 @@ void lemonade::stake(const name &owner, const asset &quantity,
 
         // calculate total lem rewards
         asset to_owner_lem = asset(0, symbol("LEM", 4));
-        uint32_t total_lem_reward_amount = 0;
-        uint32_t last_reward = existing_staking->started_at;
         if (existing_product->has_lem_rewards == true) {
+            // change Logic for calculating LEM reward
+            uint32_t total_lem_reward_amount = 0;
+            uint32_t last_reward = existing_staking->started_at;
+            auto rewards_end_time = current >= existing_staking->ended_at
+                                        ? existing_staking->ended_at
+                                        : current;
             for (int i = 0; i < 3; i++) {
-                if (existing_config->last_half_life_updated[i] <= current &&
-                    current < existing_config->last_half_life_updated[i + 1]) {
-                    total_lem_reward_amount +=
-                        ((current - last_reward) / (uint32_t)pow(2, i));
-                } else if (existing_config->last_half_life_updated[i + 1] <=
-                           current) {
-                    total_lem_reward_amount +=
-                        ((existing_config->last_half_life_updated[i + 1] -
-                          last_reward) /
-                         (uint32_t)pow(2, i));
-                    last_reward =
-                        existing_config->last_half_life_updated[i + 1];
+                if (existing_config->last_half_life_updated[i] <= last_reward &&
+                    last_reward < existing_config->last_half_life_updated[i + 1]) {
+                    if (rewards_end_time > existing_config->last_half_life_updated[i + 1] ) {
+                        last_reward = existing_config->last_half_life_updated[i + 1];
+                    }
+                    total_lem_reward_amount += ((rewards_end_time - last_reward) / (uint32_t)pow(2, i));
                 }
             }
 
-            asset total_lem_reward = asset(existing_staking->balance.amount *
-                                               total_lem_reward_amount *
-                                               lem_reward_rate / secondsPerHour,
-                                           symbol("LEM", 4));
+            asset total_lem_reward =
+                asset(existing_staking->balance.amount * total_lem_reward_amount *
+                        lem_reward_rate / secondsPerHour,
+                    symbol("LEM", 4));
             to_owner_lem = total_lem_reward - existing_staking->lem_rewards;
         }
 
@@ -365,21 +363,20 @@ void lemonade::unstake(const name &owner, const name &product_name) {
 
     // calculate total lem rewards
     asset to_owner_lem = asset(0, symbol("LEM", 4));
-    uint32_t total_lem_reward_amount = 0;
-    uint32_t last_reward = existing_staking->started_at;
     if (existing_product->has_lem_rewards == true) {
+        // change Logic for calculating LEM reward
+        uint32_t total_lem_reward_amount = 0;
+        uint32_t last_reward = existing_staking->started_at;
+        auto rewards_end_time = current >= existing_staking->ended_at
+                                    ? existing_staking->ended_at
+                                    : current;
         for (int i = 0; i < 3; i++) {
-            if (existing_config->last_half_life_updated[i] <= current &&
-                current < existing_config->last_half_life_updated[i + 1]) {
-                total_lem_reward_amount +=
-                    ((current - last_reward) / (uint32_t)pow(2, i));
-            } else if (existing_config->last_half_life_updated[i + 1] <=
-                       current) {
-                total_lem_reward_amount +=
-                    ((existing_config->last_half_life_updated[i + 1] -
-                      last_reward) /
-                     (uint32_t)pow(2, i));
-                last_reward = existing_config->last_half_life_updated[i + 1];
+            if (existing_config->last_half_life_updated[i] <= last_reward &&
+                last_reward < existing_config->last_half_life_updated[i + 1]) {
+                if (rewards_end_time > existing_config->last_half_life_updated[i + 1] ) {
+                    last_reward = existing_config->last_half_life_updated[i + 1];
+                }
+                total_lem_reward_amount += ((rewards_end_time - last_reward) / (uint32_t)pow(2, i));
             }
         }
 
@@ -480,16 +477,14 @@ void lemonade::claimlem(const name &owner, const name &product_name) {
     auto last_reward = existing_staking->last_claim_lem_reward;
     auto amount = 0;
 
+    // change Logic for calculating LEM reward
     for (int i = 0; i < 3; i++) {
-        if (existing_config->last_half_life_updated[i] <= rewards_end_time &&
-            rewards_end_time < existing_config->last_half_life_updated[i + 1]) {
+        if (existing_config->last_half_life_updated[i] <= last_reward &&
+            last_reward < existing_config->last_half_life_updated[i + 1]) {
+            if (rewards_end_time > existing_config->last_half_life_updated[i + 1] ) {
+                last_reward = existing_config->last_half_life_updated[i + 1];
+            }
             amount += ((rewards_end_time - last_reward) / (uint32_t)pow(2, i));
-        } else if (existing_config->last_half_life_updated[i + 1] <=
-                   rewards_end_time) {
-            amount += ((existing_config->last_half_life_updated[i + 1] -
-                        last_reward) /
-                       (uint32_t)pow(2, i));
-            last_reward = existing_config->last_half_life_updated[i + 1];
         }
     }
 
